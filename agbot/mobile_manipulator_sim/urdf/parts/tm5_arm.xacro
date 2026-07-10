@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find tm_description)/xacro/macro.materials.xacro"/>
+  <xacro:include filename="$(find tm_description)/xacro/macro.tm5-900-nominal.urdf.xacro"/>
+  <xacro:include filename="$(find tm_description)/xacro/macro.transmission.xacro"/>
+
+  <xacro:property name="tm5_mount_x" value="-0.10"/>
+  <xacro:property name="tm5_mount_y" value="0.0"/>
+  <xacro:property name="tm5_mount_z" value="0.245"/>
+  <xacro:property name="tm5_mount_roll" value="0.0"/>
+  <xacro:property name="tm5_mount_pitch" value="0.0"/>
+  <xacro:property name="tm5_mount_yaw" value="0.0"/>
+
+  <xacro:macro name="tm5_arm" params="prefix:='' ns:=''">
+    <xacro:tmr_materials/>
+    <xacro:tm5-900 ns="${ns}" prefix="${prefix}" color="white" format="stl"/>
+    <xacro:tmr_transmission prefix="${prefix}" hw_iface="hardware_interface/PositionJointInterface"/>
+
+    <joint name="${prefix}mobile_base_to_tm5_base" type="fixed">
+      <parent link="base_link"/>
+      <child link="${prefix}base"/>
+      <origin xyz="${tm5_mount_x} ${tm5_mount_y} ${tm5_mount_z}"
+              rpy="${tm5_mount_roll} ${tm5_mount_pitch} ${tm5_mount_yaw}"/>
+    </joint>
+
+    <gazebo reference="${prefix}link_1"><selfCollide>true</selfCollide></gazebo>
+    <gazebo reference="${prefix}link_2"><selfCollide>true</selfCollide></gazebo>
+    <gazebo reference="${prefix}link_3"><selfCollide>true</selfCollide></gazebo>
+    <gazebo reference="${prefix}link_4"><selfCollide>true</selfCollide></gazebo>
+    <gazebo reference="${prefix}link_5"><selfCollide>true</selfCollide></gazebo>
+    <gazebo reference="${prefix}link_6"><selfCollide>true</selfCollide></gazebo>
+  </xacro:macro>
+
+</robot>

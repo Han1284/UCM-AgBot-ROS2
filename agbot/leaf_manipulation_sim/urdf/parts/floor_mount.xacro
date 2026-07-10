@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Flat floor mount only (no tall pedestal). base_root -> mount_plate_link -->
+  <xacro:macro name="floor_mount" params="width:=0.50 depth:=0.50 plate_height:=0.05">
+    <link name="base_root"/>
+
+    <link name="mount_plate_link">
+      <visual name="plate_visual">
+        <origin xyz="0 0 ${plate_height / 2.0}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${width} ${depth} ${plate_height}"/>
+        </geometry>
+        <material name="plate_gray">
+          <color rgba="0.55 0.55 0.58 1.0"/>
+        </material>
+      </visual>
+      <collision name="plate_collision">
+        <origin xyz="0 0 ${plate_height / 2.0}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${width} ${depth} ${plate_height}"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <origin xyz="0 0 ${plate_height / 2.0}" rpy="0 0 0"/>
+        <mass value="5.0"/>
+        <inertia ixx="0.1" ixy="0.0" ixz="0.0" iyy="0.1" iyz="0.0" izz="0.1"/>
+      </inertial>
+    </link>
+
+    <joint name="root_to_plate" type="fixed">
+      <parent link="base_root"/>
+      <child link="mount_plate_link"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <gazebo reference="mount_plate_link">
+      <material>Gazebo/Grey</material>
+      <static>true</static>
+    </gazebo>
+  </xacro:macro>
+
+</robot>

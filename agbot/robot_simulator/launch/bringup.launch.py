@@ -3,7 +3,7 @@ import os
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import (DeclareLaunchArgument, GroupAction,
+from launch.actions import (DeclareLaunchArgument, GroupAction, TimerAction,
                             IncludeLaunchDescription, SetEnvironmentVariable)
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -23,6 +23,7 @@ def generate_launch_description():
     params_file = LaunchConfiguration('params_file')
     default_bt_xml_filename = LaunchConfiguration('default_bt_xml_filename')
     autostart = LaunchConfiguration('autostart')
+    bringup_delay = LaunchConfiguration('bringup_delay')
 
     stdout_linebuf_envvar = SetEnvironmentVariable(
         'RCUTILS_LOGGING_BUFFERED_STREAM', '1')
@@ -49,8 +50,13 @@ def generate_launch_description():
 
     declare_use_sim_time_cmd = DeclareLaunchArgument(
         'use_sim_time',
-        default_value='false',
+        default_value='true',
         description='Use simulation (Gazebo) clock if true')
+
+    declare_bringup_delay_cmd = DeclareLaunchArgument(
+        'bringup_delay',
+        default_value='12.0',
+        description='Delay, in seconds, before starting localization, navigation, and RViz.')
 
     declare_params_file_cmd = DeclareLaunchArgument(
         'params_file',
@@ -70,13 +76,15 @@ def generate_launch_description():
 
     simulation_launch = IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(get_package_share_directory('robot_simulator'),'launch',
-                                                       'simulation.launch.py')))
+                                                       'simulation.launch.py')),
+            launch_arguments={'use_sim_time': use_sim_time}.items())
     
     rviz_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(launch_dir, 'rviz_launch.py')),
         launch_arguments={'namespace': '',
                           'use_namespace': 'False',
-                          'rviz_config': os.path.join(bringup_dir, 'rviz', 'nav2_default_view.rviz'),}.items())
+                          'use_sim_time': use_sim_time,
+                          'rviz_config': os.path.join(get_package_share_directory('robot_simulator'), 'rviz', 'agbot.rviz'),}.items())
 
 
     # Specify the actions
@@ -125,12 +133,13 @@ def generate_launch_description():
     ld.add_action(declare_slam_cmd)
     ld.add_action(declare_map_yaml_cmd)
     ld.add_action(declare_use_sim_time_cmd)
+    ld.add_action(declare_bringup_delay_cmd)
     ld.add_action(declare_params_file_cmd)
     ld.add_action(declare_autostart_cmd)
     ld.add_action(declare_bt_xml_cmd)
 
     ld.add_action(simulation_launch)
-    ld.add_action(bringup_cmd_group)
-    ld.add_action(rviz_cmd)
+    ld.add_action(TimerAction(period=bringup_delay, actions=[bringup_cmd_group]))
+    ld.add_action(TimerAction(period=bringup_delay, actions=[rviz_cmd]))
 
     return ld

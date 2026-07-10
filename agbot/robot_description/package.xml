@@ -11,6 +11,8 @@
 
   <depend>urdf</depend>
   <depend>xacro</depend>
+  <exec_depend>tm_description</exec_depend>
+  <exec_depend>onrobot_rg_description</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<robot name="fixed_panda" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find panda_sim)/urdf/panda.urdf"/>
+
+  <link name="base_root"/>
+
+  <link name="stand_link">
+    <visual>
+      <origin xyz="0 0 0.01" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.26 0.26 0.02"/>
+      </geometry>
+      <material name="stand_gray">
+        <color rgba="0.45 0.45 0.48 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.01" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.26 0.26 0.02"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <origin xyz="0 0 0.01" rpy="0 0 0"/>
+      <mass value="3.0"/>
+      <inertia ixx="0.02" ixy="0.0" ixz="0.0" iyy="0.02" iyz="0.0" izz="0.02"/>
+    </inertial>
+  </link>
+
+  <joint name="base_root_to_stand" type="fixed">
+    <parent link="base_root"/>
+    <child link="stand_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="stand_to_panda_base" type="fixed">
+    <parent link="stand_link"/>
+    <child link="panda_link0"/>
+    <origin xyz="0 0 0.01" rpy="0 0 0"/>
+  </joint>
+
+  <gazebo>
+    <static>true</static>
+  </gazebo>
+
+</robot>

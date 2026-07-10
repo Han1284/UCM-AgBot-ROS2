@@ -1,0 +1,633 @@
+<?xml version="1.0"?>
+<robot name="mobile_manipulator" xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:arg name="odom_topic" default="wheel/odometry"/>
+  <xacro:arg name="publish_odom_tf" default="false"/>
+
+  <xacro:include filename="$(find tm_description)/xacro/macro.materials.xacro"/>
+  <xacro:include filename="$(find tm_description)/xacro/macro.tm5-900-nominal.urdf.xacro"/>
+
+  <!-- Mobile base dimensions -->
+  <xacro:property name="base_length" value="1.50"/>
+  <xacro:property name="base_width" value="1.03"/>
+  <xacro:property name="base_height" value="0.36"/>
+  <xacro:property name="base_zoff" value="0.16"/>
+  <xacro:property name="plate_height" value="0.04"/>
+
+  <!-- Wheel dimensions -->
+  <xacro:property name="wheel_radius" value="0.2"/>
+  <xacro:property name="wheel_width" value="0.23"/>
+  <xacro:property name="wheel_zoff" value="0.24"/>
+  <xacro:property name="wheel_box_length" value="1.25"/>
+
+  <!-- Sensor dimensions -->
+  <xacro:property name="lidar_radius" value="0.05"/>
+  <xacro:property name="lidar_length" value="0.05"/>
+  <xacro:property name="gps_length" value="0.15"/>
+  <xacro:property name="gps_width" value="0.15"/>
+  <xacro:property name="gps_height" value="0.1"/>
+  <xacro:property name="imu_length" value="0.02"/>
+  <xacro:property name="imu_width" value="0.02"/>
+  <xacro:property name="imu_height" value="0.007"/>
+
+  <!-- TM5 mount pose on the top deck -->
+  <xacro:property name="tm5_mount_x" value="-0.10"/>
+  <xacro:property name="tm5_mount_y" value="0.0"/>
+  <xacro:property name="tm5_mount_z" value="${base_height / 2 + plate_height + 0.025}"/>
+  <xacro:property name="tm5_mount_roll" value="0.0"/>
+  <xacro:property name="tm5_mount_pitch" value="0.0"/>
+  <xacro:property name="tm5_mount_yaw" value="0.0"/>
+
+  <xacro:macro name="box_inertia" params="m w h d">
+    <inertial>
+      <origin xyz="0 0 0" rpy="${pi/2} 0 ${pi/2}"/>
+      <mass value="${m}"/>
+      <inertia
+        ixx="${(m/12) * (h*h + d*d)}"
+        ixy="0.0"
+        ixz="0.0"
+        iyy="${(m/12) * (w*w + d*d)}"
+        iyz="0.0"
+        izz="${(m/12) * (w*w + h*h)}"/>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="cylinder_inertia" params="m r h">
+    <inertial>
+      <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+      <mass value="${m}"/>
+      <inertia
+        ixx="${(m/12) * (3*r*r + h*h)}"
+        ixy="0"
+        ixz="0"
+        iyy="${(m/12) * (3*r*r + h*h)}"
+        iyz="0"
+        izz="${(m/2) * (r*r)}"/>
+    </inertial>
+  </xacro:macro>
+
+  <!-- Mobile base -->
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <box size="${base_length} ${base_width} ${base_height}"/>
+      </geometry>
+      <material name="White">
+        <color rgba="1 1 1 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="${base_length} ${base_width} ${base_height}"/>
+      </geometry>
+    </collision>
+    <xacro:box_inertia m="200" w="${base_width}" d="${base_length}" h="${base_height}"/>
+  </link>
+
+  <link name="base_footprint"/>
+
+  <joint name="base_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="base_footprint"/>
+    <origin xyz="0.0 0.0 ${-(base_zoff)}" rpy="0 0 0"/>
+  </joint>
+
+  <link name="plate_link">
+    <visual>
+      <geometry>
+        <box size="${base_length} ${base_width} ${plate_height}"/>
+      </geometry>
+      <material name="Red">
+        <color rgba="1 0 0 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="${base_length} ${base_width} ${plate_height}"/>
+      </geometry>
+    </collision>
+    <xacro:box_inertia m="10" w="${base_width}" d="${base_length}" h="${plate_height}"/>
+  </link>
+
+  <joint name="plate_base_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="plate_link"/>
+    <origin xyz="0 0 ${base_height/2 + plate_height/2}" rpy="0 0 0"/>
+  </joint>
+
+  <xacro:macro name="wheel" params="name y">
+    <link name="${name}_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+        <geometry>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+        </geometry>
+        <material name="Blue">
+          <color rgba="0 0 0.5 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+        <geometry>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+        </geometry>
+      </collision>
+      <xacro:cylinder_inertia m="25" r="${wheel_radius}" h="${wheel_width}"/>
+    </link>
+
+    <joint name="${name}_joint" type="continuous">
+      <parent link="base_link"/>
+      <child link="${name}_link"/>
+      <origin xyz="0 ${y} ${-wheel_zoff}" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:wheel name="left_wheel" y="${base_width/2 - wheel_width/2}"/>
+  <xacro:wheel name="right_wheel" y="${-base_width/2 + wheel_width/2}"/>
+
+  <xacro:macro name="wheel_box" params="name y">
+    <link name="${name}_box_link">
+      <visual>
+        <geometry>
+          <box size="${wheel_box_length} ${wheel_radius*2} ${wheel_width}"/>
+        </geometry>
+        <material name="Blue">
+          <color rgba="0 0 0.8 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <geometry>
+          <box size="${wheel_box_length} ${wheel_radius*2} ${wheel_width}"/>
+        </geometry>
+      </collision>
+      <xacro:box_inertia m="5" w="${base_width}" d="${base_length}" h="${plate_height}"/>
+    </link>
+
+    <joint name="${name}_box_joint" type="fixed">
+      <parent link="base_link"/>
+      <child link="${name}_box_link"/>
+      <origin xyz="0 ${y} ${-wheel_zoff}" rpy="${pi/2} 0 0"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:wheel_box name="left_wheel" y="${base_width/2 - wheel_width/2 + 0.001}"/>
+  <xacro:wheel_box name="right_wheel" y="${-base_width/2 + wheel_width/2 -0.001}"/>
+
+  <xacro:macro name="additional_f_wheel" params="name">
+    <link name="${name}_additional_f_wheel_link">
+      <visual>
+        <geometry>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+        </geometry>
+        <material name="Blue">
+          <color rgba="0 0 0.8 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <geometry>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+        </geometry>
+      </collision>
+      <xacro:cylinder_inertia m="10" r="${wheel_radius}" h="${wheel_width}"/>
+    </link>
+
+    <joint name="${name}_additional_f_wheel_joint" type="fixed">
+      <parent link="${name}_box_link"/>
+      <child link="${name}_additional_f_wheel_link"/>
+      <origin rpy="0 0 0" xyz="${wheel_box_length/2} 0 0"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:additional_f_wheel name="left_wheel"/>
+  <xacro:additional_f_wheel name="right_wheel"/>
+
+  <xacro:macro name="additional_r_wheel" params="name">
+    <link name="${name}_additional_r_wheel_link">
+      <visual>
+        <geometry>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+        </geometry>
+        <material name="Blue">
+          <color rgba="0 0 0.8 1.0"/>
+        </material>
+      </visual>
+      <collision>
+        <geometry>
+          <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+        </geometry>
+      </collision>
+      <xacro:cylinder_inertia m="10" r="${wheel_radius}" h="${wheel_width}"/>
+    </link>
+
+    <joint name="${name}_additional_r_wheel_joint" type="fixed">
+      <parent link="${name}_box_link"/>
+      <child link="${name}_additional_r_wheel_link"/>
+      <origin rpy="0 0 0" xyz="${-wheel_box_length/2} 0 0"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:additional_r_wheel name="left_wheel"/>
+  <xacro:additional_r_wheel name="right_wheel"/>
+
+  <link name="gps_link">
+    <visual>
+      <geometry>
+        <box size="${gps_length} ${gps_width} ${gps_height}"/>
+      </geometry>
+      <material name="Grey">
+        <color rgba="0.5 0.5 .5 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="${gps_length} ${gps_width} ${gps_height}"/>
+      </geometry>
+    </collision>
+    <xacro:box_inertia m="2" w="${gps_width}" d="${gps_length}" h="${gps_height}"/>
+  </link>
+
+  <joint name="gps_joint" type="fixed">
+    <parent link="plate_link"/>
+    <child link="gps_link"/>
+    <origin xyz="${base_length/2 - gps_length/2 } ${base_width/2 - gps_width/2} ${plate_height/2 + gps_height/2}" rpy="0 0 0"/>
+  </joint>
+
+  <link name="base_scan">
+    <visual>
+      <geometry>
+        <cylinder radius="${lidar_radius}" length="${lidar_length}"/>
+      </geometry>
+      <material name="Black">
+        <color rgba="0 0 0 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder radius="${lidar_radius}" length="${lidar_length}"/>
+      </geometry>
+    </collision>
+    <xacro:cylinder_inertia m="0.7" r="${lidar_radius}" h="${lidar_length}"/>
+  </link>
+
+  <joint name="scan_joint" type="fixed">
+    <parent link="plate_link"/>
+    <child link="base_scan"/>
+    <origin xyz="${base_length/2 - lidar_radius} 0 ${plate_height/2 + lidar_length/2}" rpy="0 0 0"/>
+  </joint>
+
+  <link name="imu_link">
+    <visual>
+      <geometry>
+        <box size="${imu_length} ${imu_width} ${imu_height}"/>
+      </geometry>
+      <material name="red">
+        <color rgba="0.5 0.2 .2 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <geometry>
+        <box size="${imu_length} ${imu_width} ${imu_height}"/>
+      </geometry>
+    </collision>
+    <xacro:box_inertia m="0.2" w="${gps_width}" d="${gps_length}" h="${gps_height}"/>
+  </link>
+
+  <joint name="imu_joint" type="fixed">
+    <parent link="plate_link"/>
+    <child link="imu_link"/>
+    <origin xyz="${base_length/2 - imu_length/2 } ${-base_width/2 + imu_width/2} ${plate_height/2 + imu_height/2}" rpy="0 0 0"/>
+  </joint>
+
+  <xacro:tmr_materials/>
+  <xacro:tm5-900 ns="" prefix="" color="white" format="stl"/>
+
+  <!-- Build a visual-only RG2 assembly to avoid Gazebo crashes from the original gripper plugins. -->
+  <link name="onrobot_rg2_base_link">
+    <visual>
+      <geometry>
+        <mesh filename="package://onrobot_rg_description/meshes/rg2/visual/base_link.stl"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+  </link>
+
+  <link name="left_outer_knuckle">
+    <visual>
+      <geometry>
+        <mesh filename="package://onrobot_rg_description/meshes/rg2/visual/outer_knuckle.stl"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+  </link>
+
+  <link name="left_inner_knuckle">
+    <visual>
+      <geometry>
+        <mesh filename="package://onrobot_rg_description/meshes/rg2/visual/inner_knuckle.stl"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+  </link>
+
+  <link name="left_inner_finger">
+    <visual>
+      <geometry>
+        <mesh filename="package://onrobot_rg_description/meshes/rg2/visual/inner_finger.stl"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+  </link>
+
+  <link name="right_outer_knuckle">
+    <visual>
+      <geometry>
+        <mesh filename="package://onrobot_rg_description/meshes/rg2/visual/outer_knuckle.stl"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+  </link>
+
+  <link name="right_inner_knuckle">
+    <visual>
+      <geometry>
+        <mesh filename="package://onrobot_rg_description/meshes/rg2/visual/inner_knuckle.stl"/>
+      </geometry>
+      <material name="white"/>
+    </visual>
+  </link>
+
+  <link name="right_inner_finger">
+    <visual>
+      <geometry>
+        <mesh filename="package://onrobot_rg_description/meshes/rg2/visual/inner_finger.stl"/>
+      </geometry>
+      <material name="black"/>
+    </visual>
+  </link>
+
+  <joint name="RG2_TM_attachment" type="fixed">
+    <parent link="flange"/>
+    <child link="onrobot_rg2_base_link"/>
+    <origin xyz="0.0 0.0 0.0" rpy="0 0 1.5707"/>
+  </joint>
+
+  <joint name="left_outer_knuckle_joint" type="fixed">
+    <parent link="onrobot_rg2_base_link"/>
+    <child link="left_outer_knuckle"/>
+    <origin xyz="0 -0.017178 0.125797" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="left_inner_knuckle_joint" type="fixed">
+    <parent link="onrobot_rg2_base_link"/>
+    <child link="left_inner_knuckle"/>
+    <origin xyz="0 -0.007678 0.1422970" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="left_inner_finger_joint" type="fixed">
+    <parent link="left_outer_knuckle"/>
+    <child link="left_inner_finger"/>
+    <origin xyz="0 -0.039592 0.038177" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="right_outer_knuckle_joint" type="fixed">
+    <parent link="onrobot_rg2_base_link"/>
+    <child link="right_outer_knuckle"/>
+    <origin xyz="0 0.017178 0.125797" rpy="0 0 ${pi}"/>
+  </joint>
+
+  <joint name="right_inner_knuckle_joint" type="fixed">
+    <parent link="onrobot_rg2_base_link"/>
+    <child link="right_inner_knuckle"/>
+    <origin xyz="0 0.007678 0.1422970" rpy="0 0 ${-pi}"/>
+  </joint>
+
+  <joint name="right_inner_finger_joint" type="fixed">
+    <parent link="right_outer_knuckle"/>
+    <child link="right_inner_finger"/>
+    <origin xyz="0 -0.039592 0.038177" rpy="0 0 0"/>
+  </joint>
+
+  <joint name="mobile_base_to_tm5_base" type="fixed">
+    <parent link="base_link"/>
+    <child link="base"/>
+    <origin xyz="${tm5_mount_x} ${tm5_mount_y} ${tm5_mount_z}" rpy="${tm5_mount_roll} ${tm5_mount_pitch} ${tm5_mount_yaw}"/>
+  </joint>
+
+  <gazebo reference="plate_link">
+    <material>Gazebo/Red</material>
+  </gazebo>
+
+  <gazebo reference="right_wheel_link">
+    <material>Gazebo/Black</material>
+    <mu1>8000</mu1>
+    <mu2>8000</mu2>
+  </gazebo>
+
+  <gazebo reference="left_wheel_link">
+    <material>Gazebo/Black</material>
+    <mu1>8000</mu1>
+    <mu2>8000</mu2>
+  </gazebo>
+
+  <gazebo reference="right_wheel_box_link">
+    <material>Gazebo/Black</material>
+    <mu1>0.1</mu1>
+    <mu2>0.1</mu2>
+  </gazebo>
+
+  <gazebo reference="left_wheel_box_link">
+    <material>Gazebo/Black</material>
+    <mu1>0.1</mu1>
+    <mu2>0.1</mu2>
+  </gazebo>
+
+  <gazebo reference="right_wheel_additional_r_wheel_link">
+    <material>Gazebo/Black</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+  </gazebo>
+
+  <gazebo reference="left_wheel_additional_r_wheel_link">
+    <material>Gazebo/Black</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+  </gazebo>
+
+  <gazebo reference="right_wheel_additional_f_wheel_link">
+    <material>Gazebo/Black</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+  </gazebo>
+
+  <gazebo reference="left_wheel_additional_f_wheel_link">
+    <material>Gazebo/Black</material>
+    <mu1>0.2</mu1>
+    <mu2>0.2</mu2>
+  </gazebo>
+
+  <gazebo>
+    <plugin name="differential_drive_controller" filename="libgazebo_ros_diff_drive.so">
+      <ros>
+        <namespace></namespace>
+        <remapping>cmd_vel:=cmd_vel</remapping>
+      </ros>
+      <update_rate>30</update_rate>
+      <left_joint>left_wheel_joint</left_joint>
+      <right_joint>right_wheel_joint</right_joint>
+      <wheel_separation>0.8</wheel_separation>
+      <wheel_diameter>0.4</wheel_diameter>
+      <max_wheel_torque>2000</max_wheel_torque>
+      <max_wheel_acceleration>2.0</max_wheel_acceleration>
+      <command_topic>cmd_vel</command_topic>
+      <publish_odom>true</publish_odom>
+      <publish_odom_tf>$(arg publish_odom_tf)</publish_odom_tf>
+      <publish_wheel_tf>true</publish_wheel_tf>
+      <odometry_topic>$(arg odom_topic)</odometry_topic>
+      <odometry_frame>odom</odometry_frame>
+      <odometry_source>0</odometry_source>
+      <robot_base_frame>base_link</robot_base_frame>
+    </plugin>
+    <plugin name="joint_state_pub" filename="libgazebo_ros_joint_state_publisher.so">
+      <ros>
+        <remapping>~/out:=joint_states</remapping>
+      </ros>
+      <update_rate>30</update_rate>
+      <joint_name>left_wheel_joint</joint_name>
+      <joint_name>right_wheel_joint</joint_name>
+    </plugin>
+  </gazebo>
+
+  <gazebo reference="gps_link">
+    <sensor name="rtk_gps" type="gps">
+      <always_on>true</always_on>
+      <update_rate>5.0</update_rate>
+      <gps>
+        <position_sensing>
+          <horizontal>
+            <noise type="gaussian">
+              <mean>0.0</mean>
+              <stddev>1e-2</stddev>
+            </noise>
+          </horizontal>
+          <vertical>
+            <noise type="gaussian">
+              <mean>0.0</mean>
+              <stddev>1e-1</stddev>
+            </noise>
+          </vertical>
+        </position_sensing>
+      </gps>
+      <plugin name="mobile_rtk_gps" filename="libgazebo_ros_gps_sensor.so">
+        <ros>
+          <remapping>~/out:=gps/fix</remapping>
+          <frame_id>gps_link</frame_id>
+        </ros>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+  <gazebo reference="base_scan">
+    <sensor name="lidar" type="ray">
+      <always_on>true</always_on>
+      <visualize>true</visualize>
+      <update_rate>5</update_rate>
+      <ray>
+        <scan>
+          <horizontal>
+            <samples>360</samples>
+            <resolution>1.000000</resolution>
+            <min_angle>1.4070000</min_angle>
+            <max_angle>-1.4070000</max_angle>
+          </horizontal>
+        </scan>
+        <range>
+          <min>0.120000</min>
+          <max>3.5</max>
+          <resolution>0.015000</resolution>
+        </range>
+        <noise>
+          <type>gaussian</type>
+          <mean>0.0</mean>
+          <stddev>0.01</stddev>
+        </noise>
+      </ray>
+      <plugin name="scan" filename="libgazebo_ros_ray_sensor.so">
+        <ros>
+          <remapping>~/out:=scan</remapping>
+        </ros>
+        <output_type>sensor_msgs/LaserScan</output_type>
+        <frame_name>base_scan</frame_name>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+  <gazebo reference="imu_link">
+    <sensor name="imu_sensor" type="imu">
+      <plugin filename="libgazebo_ros_imu_sensor.so" name="imu_plugin">
+        <ros>
+          <namespace></namespace>
+          <remapping>~/out:=vectornav/imu_uncompensated</remapping>
+        </ros>
+        <initial_orientation_as_reference>false</initial_orientation_as_reference>
+      </plugin>
+      <always_on>true</always_on>
+      <update_rate>100</update_rate>
+      <visualize>true</visualize>
+      <imu>
+        <angular_velocity>
+          <x>
+            <noise type="gaussian">
+              <mean>0.0</mean>
+              <stddev>2e-4</stddev>
+              <bias_mean>0.0000075</bias_mean>
+              <bias_stddev>0.0000008</bias_stddev>
+            </noise>
+          </x>
+          <y>
+            <noise type="gaussian">
+              <mean>0.0</mean>
+              <stddev>2e-4</stddev>
+              <bias_mean>0.0000075</bias_mean>
+              <bias_stddev>0.0000008</bias_stddev>
+            </noise>
+          </y>
+          <z>
+            <noise type="gaussian">
+              <mean>0.0</mean>
+              <stddev>2e-4</stddev>
+              <bias_mean>0.0000075</bias_mean>
+              <bias_stddev>0.0000008</bias_stddev>
+            </noise>
+          </z>
+        </angular_velocity>
+        <linear_acceleration>
+          <x>
+            <noise type="gaussian">
+              <mean>0.0</mean>
+              <stddev>1.7e-2</stddev>
+              <bias_mean>0.1</bias_mean>
+              <bias_stddev>0.001</bias_stddev>
+            </noise>
+          </x>
+          <y>
+            <noise type="gaussian">
+              <mean>0.0</mean>
+              <stddev>1.7e-2</stddev>
+              <bias_mean>0.1</bias_mean>
+              <bias_stddev>0.001</bias_stddev>
+            </noise>
+          </y>
+          <z>
+            <noise type="gaussian">
+              <mean>0.0</mean>
+              <stddev>1.7e-2</stddev>
+              <bias_mean>0.1</bias_mean>
+              <bias_stddev>0.001</bias_stddev>
+            </noise>
+          </z>
+        </linear_acceleration>
+      </imu>
+    </sensor>
+  </gazebo>
+
+</robot>

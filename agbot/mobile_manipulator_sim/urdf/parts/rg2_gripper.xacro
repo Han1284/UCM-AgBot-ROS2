@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find onrobot_rg_description)/urdf/onrobot_rg2_model_macro.xacro"/>
+
+  <xacro:macro name="rg2_gripper" params="prefix:='' parent_link:='flange'">
+    <xacro:onrobot_rg2_base_link prefix="${prefix}"/>
+    <xacro:finger_links prefix="${prefix}" fingerprefix="left"/>
+    <xacro:finger_links prefix="${prefix}" fingerprefix="right"/>
+    <xacro:finger_joint prefix="${prefix}"/>
+    <xacro:right_outer_knuckle_joint prefix="${prefix}"/>
+
+    <joint name="${prefix}rg2_mount_joint" type="fixed">
+      <parent link="${parent_link}"/>
+      <child link="${prefix}onrobot_rg2_base_link"/>
+      <origin xyz="0.0 0.0 0.0" rpy="0 0 1.5707"/>
+    </joint>
+  </xacro:macro>
+
+</robot>

@@ -1,0 +1,30 @@
+/**:
+  ros__parameters:
+    use_sim_time: true
+    publish_rate: 50.0
+
+leaf_pose_adapter:
+  ros__parameters:
+    input_topic: /target_leaves_multi_pose
+    output_frame: base
+    pose_set_index: 0
+
+mock_leaf_pose_publisher:
+  ros__parameters:
+    output_topic: /target_leaves_multi_pose
+    frame_id: base
+    publish_rate: 1.0
+    leaf_positions:
+      - [0.55, 0.10, 0.70]
+      - [0.58, -0.08, 0.75]
+      - [0.52, 0.00, 0.82]
+
+leaf_grasp_demo:
+  ros__parameters:
+    target_topic: /target_leaves_multi_pose
+    arm_controller: arm_position_controller
+    gripper_controller: gripper_position_controller
+    pose_set_index: 0
+    approach_offset_z: 0.08
+    grasp_finger_position: 0.40
+    open_finger_position: 0.78

@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="end_effector_frame" params="prefix:='' parent_link:='flange'">
+    <link name="${prefix}end_effector">
+      <visual>
+        <geometry>
+          <sphere radius="0.015"/>
+        </geometry>
+        <material name="green">
+          <color rgba="0.0 1.0 0.0 0.8"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="${prefix}end_effector_joint" type="fixed">
+      <parent link="${parent_link}"/>
+      <child link="${prefix}end_effector"/>
+      <origin xyz="0.0 0.0 0.215" rpy="0 0 0"/>
+    </joint>
+  </xacro:macro>
+
+</robot>

@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+<robot name="leaf_manipulation_sim" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find tm_description)/xacro/macro.materials.xacro"/>
+  <xacro:include filename="$(find tm_description)/xacro/macro.tm5-900-nominal.urdf.xacro"/>
+  <xacro:include filename="$(find tm_description)/xacro/macro.transmission.xacro"/>
+  <xacro:include filename="$(find leaf_manipulation_sim)/urdf/parts/fixed_mount.xacro"/>
+  <xacro:include filename="$(find leaf_manipulation_sim)/urdf/parts/rg2_mount.xacro"/>
+  <xacro:include filename="$(find leaf_manipulation_sim)/urdf/parts/gazebo_plugins.xacro"/>
+  <xacro:include filename="$(find leaf_manipulation_sim)/urdf/parts/gazebo_collision_safe.xacro"/>
+
+  <link name="world"/>
+
+  <xacro:fixed_pedestal height="0.75" width="0.45" depth="0.45"/>
+  <xacro:bench_camera parent_link="pedestal_link"/>
+
+  <xacro:property name="arm_mount_x" value="0.0"/>
+  <xacro:property name="arm_mount_y" value="0.0"/>
+  <xacro:property name="arm_mount_z" value="0.40"/>
+  <xacro:property name="arm_mount_roll" value="0.0"/>
+  <xacro:property name="arm_mount_pitch" value="0.0"/>
+  <xacro:property name="arm_mount_yaw" value="0.0"/>
+
+  <xacro:tmr_materials/>
+  <xacro:tm5-900 ns="" prefix="" color="white" format="stl"/>
+  <xacro:tmr_transmission prefix="" hw_iface="hardware_interface/PositionJointInterface"/>
+
+  <joint name="pedestal_to_arm_base" type="fixed">
+    <parent link="pedestal_link"/>
+    <child link="base"/>
+    <origin xyz="${arm_mount_x} ${arm_mount_y} ${arm_mount_z}"
+            rpy="${arm_mount_roll} ${arm_mount_pitch} ${arm_mount_yaw}"/>
+  </joint>
+
+  <xacro:rg2_gripper prefix="" parent_link="flange"/>
+  <xacro:tm5_gazebo_safe prefix=""/>
+  <xacro:rg2_gazebo_safe prefix=""/>
+  <xacro:rg2_mimic_plugins prefix=""/>
+  <xacro:gazebo_ros_control_plugin/>
+  <xacro:bench_depth_camera parent_link="camera_link"/>
+
+  <gazebo reference="link_1"><selfCollide>true</selfCollide></gazebo>
+  <gazebo reference="link_2"><selfCollide>true</selfCollide></gazebo>
+  <gazebo reference="link_3"><selfCollide>true</selfCollide></gazebo>
+  <gazebo reference="link_4"><selfCollide>true</selfCollide></gazebo>
+  <gazebo reference="link_5"><selfCollide>true</selfCollide></gazebo>
+  <gazebo reference="link_6"><selfCollide>true</selfCollide></gazebo>
+
+</robot>

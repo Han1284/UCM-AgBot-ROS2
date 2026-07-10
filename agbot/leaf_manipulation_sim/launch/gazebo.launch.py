@@ -1,0 +1,157 @@
+import os
+
+from ament_index_python.packages import get_package_share_directory
+from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, SetEnvironmentVariable, TimerAction
+from launch.conditions import IfCondition
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import Command, LaunchConfiguration
+from launch_ros.actions import Node
+
+
+def generate_launch_description():
+    pkg_sim = get_package_share_directory('leaf_manipulation_sim')
+    pkg_gazebo_ros = get_package_share_directory('gazebo_ros')
+
+    use_sim_time = LaunchConfiguration('use_sim_time')
+    world = LaunchConfiguration('world')
+    gui = LaunchConfiguration('gui')
+    rviz = LaunchConfiguration('rviz')
+    spawn_robot = LaunchConfiguration('spawn_robot')
+
+    urdf_path = os.path.join(pkg_sim, 'urdf', 'leaf_arm.sim.urdf.xacro')
+    rviz_config = os.path.join(pkg_sim, 'rviz', 'leaf_manipulation_sim.rviz')
+    controllers_file = os.path.join(pkg_sim, 'config', 'arm_controllers.yaml')
+    models_path = os.path.join(pkg_sim, 'models')
+
+    robot_description = Command(['xacro ', urdf_path])
+
+    gazebo_model_path = SetEnvironmentVariable(
+        name='GAZEBO_MODEL_PATH',
+        value=[models_path, ':', os.environ.get('GAZEBO_MODEL_PATH', '')],
+    )
+
+    plant_spawns = []
+    scene_models = [
+        ('plant_stem', '0.55', '0.0', '0.0', '0.0'),
+        ('leaf_target_1', '0.55', '0.10', '0.70', '0.0'),
+        ('leaf_target_2', '0.58', '-0.08', '0.75', '0.3'),
+        ('leaf_target_3', '0.52', '0.00', '0.82', '-0.2'),
+    ]
+    for entity_name, x, y, z, yaw in scene_models:
+        model_name = 'plant_stem' if entity_name == 'plant_stem' else 'leaf_target'
+        sdf_path = os.path.join(models_path, model_name, 'model.sdf')
+        plant_spawns.append(
+            TimerAction(
+                period=4.0,
+                actions=[
+                    Node(
+                        package='gazebo_ros',
+                        executable='spawn_entity.py',
+                        output='screen',
+                        arguments=[
+                            '-entity', entity_name,
+                            '-file', sdf_path,
+                            '-x', x,
+                            '-y', y,
+                            '-z', z,
+                            '-Y', yaw,
+                        ],
+                    ),
+                ],
+            )
+        )
+
+    return LaunchDescription([
+        gazebo_model_path,
+        DeclareLaunchArgument('use_sim_time', default_value='true'),
+        DeclareLaunchArgument(
+            'world',
+            default_value=os.path.join(pkg_sim, 'worlds', 'leaf_bench.world'),
+            description='Gazebo world file for leaf manipulation bench'),
+        DeclareLaunchArgument('gui', default_value='true'),
+        DeclareLaunchArgument('rviz', default_value='false'),
+        DeclareLaunchArgument('spawn_robot', default_value='true'),
+
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                os.path.join(pkg_gazebo_ros, 'launch', 'gzserver.launch.py')),
+            launch_arguments={'world': world}.items(),
+        ),
+
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                os.path.join(pkg_gazebo_ros, 'launch', 'gzclient.launch.py')),
+            condition=IfCondition(gui),
+        ),
+
+        Node(
+            package='robot_state_publisher',
+            executable='robot_state_publisher',
+            output='screen',
+            parameters=[{
+                'use_sim_time': use_sim_time,
+                'robot_description': robot_description,
+            }],
+        ),
+
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='world_to_base_tf',
+            output='screen',
+            arguments=['0', '0', '0', '0', '0', '0', 'world', 'base'],
+            parameters=[{'use_sim_time': use_sim_time}],
+        ),
+
+        TimerAction(
+            period=3.0,
+            actions=[
+                Node(
+                    package='gazebo_ros',
+                    executable='spawn_entity.py',
+                    output='screen',
+                    arguments=[
+                        '-entity', 'leaf_arm',
+                        '-topic', 'robot_description',
+                        '-x', '0.0',
+                        '-y', '0.0',
+                        '-z', '0.0',
+                    ],
+                    condition=IfCondition(spawn_robot),
+                ),
+            ],
+        ),
+
+        *plant_spawns,
+
+        TimerAction(
+            period=6.0,
+            actions=[
+                Node(
+                    package='controller_manager',
+                    executable='spawner',
+                    output='screen',
+                    arguments=[
+                        'joint_state_controller',
+                        'arm_position_controller',
+                        'gripper_position_controller',
+                    ],
+                    parameters=[
+                        controllers_file,
+                        {'use_sim_time': use_sim_time},
+                    ],
+                ),
+            ],
+        ),
+
+        Node(
+            package='rviz2',
+            executable='rviz2',
+            name='rviz2',
+            output='screen',
+            arguments=['-d', rviz_config],
+            parameters=[{'use_sim_time': use_sim_time}],
+            condition=IfCondition(rviz),
+        ),
+    ])

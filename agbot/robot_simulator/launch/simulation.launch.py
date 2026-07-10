@@ -19,9 +19,10 @@ def _package_available(package_name):
 def generate_launch_description():
     pkg_gazebo_ros = get_package_share_directory('gazebo_ros')
     pkg_robot_sim = get_package_share_directory('robot_simulator')
+    pkg_robot_desc = get_package_share_directory('robot_description')
     has_robot_localization = _package_available('robot_localization')
 
-    urdf_path = os.path.join(pkg_robot_sim, 'urdf_sim', 'robot_description_gazebo.urdf.xacro')
+    urdf_path = os.path.join(pkg_robot_desc, 'urdf', 'mobile_manipulator.urdf.xacro')
     world_path = os.path.join(pkg_robot_sim, 'worlds', 'orchard.world')
     ekf_config_path = os.path.join(pkg_robot_sim, 'config', 'ekf.yaml')
 
@@ -30,13 +31,13 @@ def generate_launch_description():
     y_pose = LaunchConfiguration('y_pose', default='0.0')
     Y_pose = LaunchConfiguration('Y_pose', default='1.5707')
     use_robot_localization = LaunchConfiguration(
-        'use_robot_localization', default='true' if has_robot_localization else 'false'
+        'use_robot_localization', default='false'
     )
     odom_topic = LaunchConfiguration(
-        'odom_topic', default='wheel/odometry' if has_robot_localization else 'odom'
+        'odom_topic', default='odom'
     )
     publish_odom_tf = LaunchConfiguration(
-        'publish_odom_tf', default='false' if has_robot_localization else 'true'
+        'publish_odom_tf', default='true'
     )
 
     robot_desc = Command([
@@ -86,7 +87,6 @@ def generate_launch_description():
         output='screen',
         parameters=[{'use_sim_time': use_sim_time, 'robot_description': robot_desc}],
         remappings=remappings,
-        arguments=[robot_desc]
     )
 
     robot_localization_node = Node(
@@ -103,17 +103,17 @@ def generate_launch_description():
 
     ld.add_action(DeclareLaunchArgument(
         'use_robot_localization',
-        default_value='true' if has_robot_localization else 'false',
-        description='Use robot_localization EKF if the package is available.'
+        default_value='false',
+        description='Use robot_localization EKF instead of Gazebo odometry TF.'
     ))
     ld.add_action(DeclareLaunchArgument(
         'odom_topic',
-        default_value='wheel/odometry' if has_robot_localization else 'odom',
+        default_value='odom',
         description='Odometry topic published by the Gazebo diff-drive plugin.'
     ))
     ld.add_action(DeclareLaunchArgument(
         'publish_odom_tf',
-        default_value='false' if has_robot_localization else 'true',
+        default_value='true',
         description='Whether Gazebo publishes the odom to base_link transform.'
     ))
     ld.add_action(LogInfo(

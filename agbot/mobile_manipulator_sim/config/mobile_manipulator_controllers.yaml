@@ -1,0 +1,27 @@
+joint_state_controller:
+  type: joint_state_controller/JointStateController
+  publish_rate: 50
+
+arm_position_controller:
+  type: position_controllers/JointGroupPositionController
+  joints:
+    - joint_1
+    - joint_2
+    - joint_3
+    - joint_4
+    - joint_5
+    - joint_6
+
+gripper_position_controller:
+  type: position_controllers/JointPositionController
+  joint: finger_joint
+
+/gazebo_ros_control:
+  pid_gains:
+    joint_1: {p: 100.0, i: 0.01, d: 10.0}
+    joint_2: {p: 100.0, i: 0.01, d: 10.0}
+    joint_3: {p: 100.0, i: 0.01, d: 10.0}
+    joint_4: {p: 50.0, i: 0.01, d: 5.0}
+    joint_5: {p: 50.0, i: 0.01, d: 5.0}
+    joint_6: {p: 50.0, i: 0.01, d: 5.0}
+    finger_joint: {p: 1.0, i: 0.5, d: 1.0}

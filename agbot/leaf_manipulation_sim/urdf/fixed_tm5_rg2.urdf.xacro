@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<robot name="fixed_tm5_rg2" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:include filename="$(find tm_description)/xacro/macro.materials.xacro"/>
+  <xacro:include filename="$(find tm_description)/xacro/macro.tm5-900-nominal.urdf.xacro"/>
+  <xacro:include filename="$(find leaf_manipulation_sim)/urdf/parts/rg2_mount.xacro"/>
+  <xacro:include filename="$(find leaf_manipulation_sim)/urdf/parts/floor_mount.xacro"/>
+  <xacro:include filename="$(find leaf_manipulation_sim)/urdf/parts/gazebo_collision_safe.xacro"/>
+
+  <xacro:property name="plate_height" value="0.05"/>
+
+  <!-- base_root -> mount_plate_link -> base -> link_0..6 -> flange -> RG2 -->
+  <xacro:floor_mount width="0.50" depth="0.50" plate_height="${plate_height}"/>
+
+  <xacro:tmr_materials/>
+  <xacro:tm5-900 ns="" prefix="" color="white" format="stl"/>
+
+  <joint name="plate_to_arm_base" type="fixed">
+    <parent link="mount_plate_link"/>
+    <child link="base"/>
+    <origin xyz="0 0 ${plate_height}" rpy="0 0 0"/>
+  </joint>
+
+  <xacro:rg2_gripper prefix="" parent_link="flange"/>
+
+  <gazebo>
+    <static>true</static>
+  </gazebo>
+
+  <xacro:tm5_gazebo_safe prefix=""/>
+  <xacro:rg2_gazebo_safe prefix=""/>
+
+</robot>

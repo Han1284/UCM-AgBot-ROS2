@@ -17,6 +17,8 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(onrobot_rg_description REQUIRED)
+find_package(tm_description REQUIRED)
 find_package(urdf REQUIRED)
 find_package(xacro REQUIRED)
 
