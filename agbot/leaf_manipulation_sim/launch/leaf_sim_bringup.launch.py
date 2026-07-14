@@ -15,20 +15,23 @@ def generate_launch_description():
     gui = LaunchConfiguration('gui')
     rviz = LaunchConfiguration('rviz')
     use_moveit = LaunchConfiguration('use_moveit')
+    publish_static_joint_states = LaunchConfiguration('publish_static_joint_states')
 
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='true'),
-        DeclareLaunchArgument('gui', default_value='true'),
-        DeclareLaunchArgument('rviz', default_value='false'),
+        DeclareLaunchArgument('gui', default_value='false'),
+        DeclareLaunchArgument('rviz', default_value='true'),
         DeclareLaunchArgument('use_moveit', default_value='false'),
+        DeclareLaunchArgument('publish_static_joint_states', default_value='true'),
 
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(
-                os.path.join(pkg_sim, 'launch', 'gazebo.launch.py')),
+                os.path.join(pkg_sim, 'launch', 'fixed_arm_gazebo.launch.py')),
             launch_arguments={
                 'use_sim_time': use_sim_time,
                 'gui': gui,
                 'rviz': rviz,
+                'publish_static_joint_states': publish_static_joint_states,
             }.items(),
         ),
 

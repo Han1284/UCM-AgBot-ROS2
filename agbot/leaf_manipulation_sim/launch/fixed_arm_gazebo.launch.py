@@ -6,14 +6,12 @@ from launch.actions import (
     DeclareLaunchArgument,
     ExecuteProcess,
     IncludeLaunchDescription,
-    RegisterEventHandler,
     SetEnvironmentVariable,
     TimerAction,
 )
 from launch.conditions import IfCondition
-from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import Command, LaunchConfiguration
+from launch.substitutions import Command, LaunchConfiguration, PythonExpression
 from launch_ros.actions import Node
 from launch_ros.descriptions import ParameterValue
 
@@ -28,11 +26,13 @@ def generate_launch_description():
     world = LaunchConfiguration('world')
     gui = LaunchConfiguration('gui')
     rviz = LaunchConfiguration('rviz')
+    software_gzclient = LaunchConfiguration('software_gzclient')
+    publish_static_joint_states = LaunchConfiguration('publish_static_joint_states')
 
     urdf_path = os.path.join(pkg_sim, 'urdf', 'fixed_tm5_rg2.urdf.xacro')
     sanitize_script = os.path.join(pkg_sim, 'urdf', 'sanitize_urdf_for_gazebo.py')
     urdf_out = '/tmp/fixed_tm5_rg2_gazebo.urdf'
-    rviz_config = os.path.join(pkg_sim, 'rviz', 'leaf_manipulation_sim.rviz')
+    rviz_config = os.path.join(pkg_sim, 'rviz', 'leaf_manipulation.rviz')
 
     robot_description = ParameterValue(
         Command([
@@ -47,8 +47,10 @@ def generate_launch_description():
             'world',
             default_value=os.path.join(pkg_sim, 'worlds', 'fixed_arm_empty.world'),
             description='Gazebo world file'),
-        DeclareLaunchArgument('gui', default_value='true'),
-        DeclareLaunchArgument('rviz', default_value='false'),
+        DeclareLaunchArgument('gui', default_value='false'),
+        DeclareLaunchArgument('rviz', default_value='true'),
+        DeclareLaunchArgument('software_gzclient', default_value='true'),
+        DeclareLaunchArgument('publish_static_joint_states', default_value='true'),
     ]
 
     gazebo_resource_path = SetEnvironmentVariable(
@@ -77,6 +79,20 @@ def generate_launch_description():
         }.items(),
     )
 
+    gzclient = ExecuteProcess(
+        cmd=[
+            'bash',
+            '-lc',
+            PythonExpression([
+                '"LIBGL_ALWAYS_SOFTWARE=true gzclient" if "true" == "',
+                software_gzclient,
+                '" else "gzclient"',
+            ]),
+        ],
+        output='screen',
+        condition=IfCondition(gui),
+    )
+
     spawn_robot = Node(
         package='gazebo_ros',
         executable='spawn_entity.py',
@@ -91,31 +107,12 @@ def generate_launch_description():
         ],
     )
 
-    gzclient_after_spawn = RegisterEventHandler(
-        OnProcessExit(
-            target_action=spawn_robot,
-            on_exit=[
-                ExecuteProcess(
-                    cmd=[
-                        'gnome-terminal',
-                        '--',
-                        'bash',
-                        '-lc',
-                        'LIBGL_ALWAYS_SOFTWARE=1 gzclient',
-                    ],
-                    output='screen',
-                    condition=IfCondition(gui),
-                ),
-            ],
-        ),
-    )
-
     return LaunchDescription([
         *declared_args,
         gazebo_resource_path,
         generate_urdf,
         gzserver,
-        gzclient_after_spawn,
+        gzclient,
 
         Node(
             package='tf2_ros',
@@ -145,6 +142,7 @@ def generate_launch_description():
                     name='static_joint_states',
                     output='screen',
                     parameters=[{'use_sim_time': use_sim_time}],
+                    condition=IfCondition(publish_static_joint_states),
                 ),
             ],
         ),

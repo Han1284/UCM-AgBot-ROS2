@@ -21,7 +21,7 @@ def generate_launch_description():
     use_sim_time = LaunchConfiguration('use_sim_time')
     start_move_group = LaunchConfiguration('start_move_group')
 
-    urdf_path = os.path.join(pkg_sim, 'urdf', 'leaf_arm.sim.urdf.xacro')
+    urdf_path = os.path.join(pkg_sim, 'urdf', 'fixed_tm5_rg2.urdf.xacro')
     robot_description = Command(['xacro ', urdf_path])
 
     robot_description_semantic = {

@@ -30,7 +30,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetSpectrum.srv"
   DEPENDENCIES std_msgs geometry_msgs
 )
-2
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()

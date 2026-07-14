@@ -11,11 +11,13 @@
   <buildtool_depend>ament_cmake_python</buildtool_depend>
 
   <depend>rclpy</depend>
+  <depend>rclcpp</depend>
   <depend>geometry_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
   <depend>tf2_ros</depend>
   <depend>custom_interfaces</depend>
+  <depend>moveit_msgs</depend>
 
   <exec_depend>tm_description</exec_depend>
   <exec_depend>tm_moveit_config_tm5-900</exec_depend>
