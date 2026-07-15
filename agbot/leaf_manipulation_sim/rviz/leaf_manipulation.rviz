@@ -65,7 +65,7 @@ Visualization Manager:
         gripper:
           Alpha: 1
           Show Axes: false
-          Show Trail: false
+          Show Trail: true
         left_inner_finger:
           Alpha: 1
           Show Axes: false
@@ -146,6 +146,62 @@ Visualization Manager:
       Update Interval: 0
       Value: true
       Visual Enabled: true
+    - Class: rviz_default_plugins/Path
+      Alpha: 1
+      Buffer Length: 1
+      Color: 242; 89; 25
+      Enabled: true
+      Head Diameter: 0.05000000074505806
+      Head Length: 0.029999999329447746
+      Length: 0.30000001192092896
+      Line Style: Lines
+      Line Width: 0.019999999552965164
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Style: None
+      Pose Topic: ""
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.019999999552965164
+      Shaft Length: 0.029999999329447746
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /circle_demo_path
+      Name: CirclePath
+      Queue Size: 100
+      Value: true
+    - Class: rviz_default_plugins/Path
+      Alpha: 1
+      Buffer Length: 1
+      Color: 32; 191; 107
+      Enabled: true
+      Head Diameter: 0.05000000074505806
+      Head Length: 0.029999999329447746
+      Length: 0.30000001192092896
+      Line Style: Lines
+      Line Width: 0.019999999552965164
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Style: None
+      Pose Topic: ""
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.019999999552965164
+      Shaft Length: 0.029999999329447746
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /pose_grasp_path
+      Name: PoseGraspPath
+      Queue Size: 100
+      Value: true
     - Class: rviz_default_plugins/TF
       Enabled: false
       Frame Timeout: 15

@@ -10,6 +10,7 @@ find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 find_package(moveit_ros_planning_interface REQUIRED)
 find_package(moveit_msgs REQUIRED)
 
@@ -20,12 +21,24 @@ ament_target_dependencies(circle_motion_demo
   rclcpp
   sensor_msgs
   geometry_msgs
+  nav_msgs
+  moveit_ros_planning_interface
+  moveit_msgs
+)
+
+add_executable(move_to_pose_grasp_demo src/move_to_pose_grasp_demo.cpp)
+ament_target_dependencies(move_to_pose_grasp_demo
+  rclcpp
+  sensor_msgs
+  geometry_msgs
+  nav_msgs
   moveit_ros_planning_interface
   moveit_msgs
 )
 
 install(TARGETS
   circle_motion_demo
+  move_to_pose_grasp_demo
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -48,6 +61,12 @@ install(PROGRAMS
   leaf_manipulation_sim/static_joint_states.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME static_joint_states
+)
+
+install(PROGRAMS
+  leaf_manipulation_sim/prompt_pose_grasp_demo.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME prompt_pose_grasp_demo
 )
 
 if(BUILD_TESTING)

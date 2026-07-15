@@ -50,7 +50,7 @@
     </gazebo>
   </xacro:macro>
 
-  <xacro:macro name="bench_depth_camera" params="parent_link:='camera_link'">
+  <xacro:macro name="bench_depth_camera" params="parent_link:='camera_link' frame_name:='camera_depth_optical_frame' namespace:='/camera'">
     <gazebo reference="${parent_link}">
       <sensor name="bench_depth_camera" type="depth">
         <always_on>true</always_on>
@@ -70,14 +70,14 @@
         </camera>
         <plugin name="bench_depth_camera_plugin" filename="libgazebo_ros_camera.so">
           <ros>
-            <namespace>/camera</namespace>
+            <namespace>${namespace}</namespace>
             <remapping>~/image_raw:=color/image_raw</remapping>
             <remapping>~/camera_info:=color/camera_info</remapping>
             <remapping>~/depth/image_raw:=depth/image_raw</remapping>
             <remapping>~/depth/camera_info:=depth/camera_info</remapping>
             <remapping>~/depth/points:=depth/color/points</remapping>
           </ros>
-          <frame_name>${parent_link}</frame_name>
+          <frame_name>${frame_name}</frame_name>
         </plugin>
       </sensor>
     </gazebo>
