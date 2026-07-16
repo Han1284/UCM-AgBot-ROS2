@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Strip mesh collisions from URDF stdin; replace with tiny boxes for Gazebo Classic."""
+"""Prepare the visualization URDF for stable Gazebo Classic use."""
 
 import sys
 import xml.etree.ElementTree as ET
@@ -15,6 +15,22 @@ def _tiny_box_collision(name: str = 'gazebo_safe') -> ET.Element:
 
 def sanitize_tree(root: ET.Element) -> None:
     for link in root.findall('link'):
+        # The official D435 Collada mesh is useful in RViz but can stall Ogre
+        # while a depth sensor renders in a VM. Gazebo only needs a light body.
+        if link.get('name') == 'camera_link':
+            for visual in list(link.findall('visual')):
+                geometry = visual.find('geometry')
+                mesh = geometry.find('mesh') if geometry is not None else None
+                if mesh is not None and mesh.get('filename', '').endswith('d435.dae'):
+                    link.remove(visual)
+                    safe_visual = ET.Element('visual', name='gazebo_d435_body')
+                    ET.SubElement(safe_visual, 'origin', xyz='0 -0.0175 0', rpy='0 0 0')
+                    safe_geometry = ET.SubElement(safe_visual, 'geometry')
+                    ET.SubElement(safe_geometry, 'box', size='0.02505 0.090 0.025')
+                    material = ET.SubElement(safe_visual, 'material', name='camera_gray')
+                    ET.SubElement(material, 'color', rgba='0.55 0.57 0.59 1')
+                    link.append(safe_visual)
+
         removed_mesh = False
         for collision in list(link.findall('collision')):
             geometry = collision.find('geometry')

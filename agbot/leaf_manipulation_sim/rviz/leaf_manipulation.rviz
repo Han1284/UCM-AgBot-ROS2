@@ -5,7 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded: ~
       Splitter Ratio: 0.5
-    Tree Height: 553
+    Tree Height: 825
   - Class: rviz_common/Views
     Expanded:
       - /Current View1
@@ -58,6 +58,19 @@ Visualization Manager:
           Alpha: 1
           Show Axes: false
           Show Trail: false
+        camera_color_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        camera_depth_optical_frame:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        camera_link:
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+          Value: true
         flange:
           Alpha: 1
           Show Axes: false
@@ -65,7 +78,7 @@ Visualization Manager:
         gripper:
           Alpha: 1
           Show Axes: false
-          Show Trail: true
+          Show Trail: false
         left_inner_finger:
           Alpha: 1
           Show Axes: false
@@ -146,9 +159,9 @@ Visualization Manager:
       Update Interval: 0
       Value: true
       Visual Enabled: true
-    - Class: rviz_default_plugins/Path
-      Alpha: 1
+    - Alpha: 1
       Buffer Length: 1
+      Class: rviz_default_plugins/Path
       Color: 242; 89; 25
       Enabled: true
       Head Diameter: 0.05000000074505806
@@ -156,12 +169,13 @@ Visualization Manager:
       Length: 0.30000001192092896
       Line Style: Lines
       Line Width: 0.019999999552965164
+      Name: CirclePath
       Offset:
         X: 0
         Y: 0
         Z: 0
+      Pose Color: 255; 85; 255
       Pose Style: None
-      Pose Topic: ""
       Radius: 0.029999999329447746
       Shaft Diameter: 0.019999999552965164
       Shaft Length: 0.029999999329447746
@@ -171,12 +185,10 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /circle_demo_path
-      Name: CirclePath
-      Queue Size: 100
       Value: true
-    - Class: rviz_default_plugins/Path
-      Alpha: 1
+    - Alpha: 1
       Buffer Length: 1
+      Class: rviz_default_plugins/Path
       Color: 32; 191; 107
       Enabled: true
       Head Diameter: 0.05000000074505806
@@ -184,12 +196,13 @@ Visualization Manager:
       Length: 0.30000001192092896
       Line Style: Lines
       Line Width: 0.019999999552965164
+      Name: PoseGraspPath
       Offset:
         X: 0
         Y: 0
         Z: 0
+      Pose Color: 255; 85; 255
       Pose Style: None
-      Pose Topic: ""
       Radius: 0.029999999329447746
       Shaft Diameter: 0.019999999552965164
       Shaft Length: 0.029999999329447746
@@ -199,8 +212,6 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /pose_grasp_path
-      Name: PoseGraspPath
-      Queue Size: 100
       Value: true
     - Class: rviz_default_plugins/TF
       Enabled: false
@@ -216,6 +227,26 @@ Visualization Manager:
         {}
       Update Interval: 0
       Value: false
+    - Class: rviz_default_plugins/Camera
+      Enabled: true
+      Image Rendering: background and overlay
+      Name: Camera
+      Overlay Alpha: 0.5
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: "/camera/color/image_raw"
+      Value: true
+      Visibility:
+        CirclePath: true
+        Grid: true
+        PoseGraspPath: true
+        RobotModel: true
+        TF: true
+        Value: true
+      Zoom Factor: 1
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -249,20 +280,22 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.2799999713897705
+      Pitch: 0.23000000417232513
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz_default_plugins)
-      Yaw: 5.423183917999268
+      Yaw: 1.0063679218292236
     Saved: ~
 Window Geometry:
+  Camera:
+    collapsed: false
   Displays:
     collapsed: false
-  Height: 1600
+  Height: 2032
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd000000010000000000000316000005a4fc0200000002fb000000100044006900730070006c006100790073010000006e000003210000018200fffffffb0000000a00560069006500770073010000039b000002770000013200ffffff000005b3000005a400000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd00000001000000000000031600000754fc0200000003fb000000100044006900730070006c006100790073010000006e000004310000018200fffffffc000003f4000001320000000000fffffffa000000000100000002fb0000000c00430061006d0065007200610000000000ffffffff0000000000000000fb0000000a005600690065007700730000000000000003160000015f00fffffffb0000000c00430061006d00650072006101000004ab000003170000004a00ffffff00000b4e0000075400000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Views:
     collapsed: false
-  Width: 2261
-  X: 584
-  Y: 104
+  Width: 3696
+  X: 144
+  Y: 54

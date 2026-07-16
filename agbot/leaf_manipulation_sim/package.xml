@@ -21,6 +21,7 @@
   <depend>moveit_msgs</depend>
 
   <exec_depend>tm_description</exec_depend>
+  <exec_depend>realsense2_description</exec_depend>
   <exec_depend>tm_moveit_config_tm5-900</exec_depend>
   <exec_depend>onrobot_rg_description</exec_depend>
   <exec_depend>gazebo_ros</exec_depend>

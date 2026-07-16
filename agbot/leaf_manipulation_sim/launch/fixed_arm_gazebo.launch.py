@@ -21,6 +21,11 @@ def generate_launch_description():
     pkg_gazebo_ros = get_package_share_directory('gazebo_ros')
     pkg_tm = get_package_share_directory('tm_description')
     pkg_rg = get_package_share_directory('onrobot_rg_description')
+    gazebo_share = '/usr/share/gazebo-11'
+    gazebo_media = '/usr/share/gazebo-11/media'
+    gazebo_models = '/usr/share/gazebo-11/models'
+    gazebo_plugins = '/usr/lib/x86_64-linux-gnu/gazebo-11/plugins'
+    ogre_resource_path = '/usr/lib/x86_64-linux-gnu/OGRE-1.9.0'
 
     use_sim_time = LaunchConfiguration('use_sim_time')
     world = LaunchConfiguration('world')
@@ -35,9 +40,7 @@ def generate_launch_description():
     rviz_config = os.path.join(pkg_sim, 'rviz', 'leaf_manipulation.rviz')
 
     robot_description = ParameterValue(
-        Command([
-            'bash -c \'xacro "', urdf_path, '" | python3 "', sanitize_script, '"\'',
-        ]),
+        Command(['xacro ', urdf_path]),
         value_type=str,
     )
 
@@ -56,10 +59,49 @@ def generate_launch_description():
     gazebo_resource_path = SetEnvironmentVariable(
         name='GAZEBO_RESOURCE_PATH',
         value=':'.join([
+            gazebo_share,
+            gazebo_media,
             pkg_tm,
             pkg_rg,
+            pkg_sim,
             os.environ.get('GAZEBO_RESOURCE_PATH', ''),
         ]),
+    )
+
+    gazebo_model_path = SetEnvironmentVariable(
+        name='GAZEBO_MODEL_PATH',
+        value=':'.join([
+            os.path.join(pkg_sim, 'models'),
+            gazebo_models,
+            os.environ.get('GAZEBO_MODEL_PATH', ''),
+        ]),
+    )
+
+    gazebo_plugin_path = SetEnvironmentVariable(
+        name='GAZEBO_PLUGIN_PATH',
+        value=':'.join([
+            gazebo_plugins,
+            os.environ.get('GAZEBO_PLUGIN_PATH', ''),
+        ]),
+    )
+
+    ogre_resources = SetEnvironmentVariable(
+        name='OGRE_RESOURCE_PATH',
+        value=':'.join([
+            ogre_resource_path,
+            os.environ.get('OGRE_RESOURCE_PATH', ''),
+        ]),
+    )
+
+    # VMware's SVGA3D OpenGL 3 path can stall Gazebo depth-camera FBOs.
+    vmware_gl_compatibility = SetEnvironmentVariable(
+        name='SVGA_VGPU10',
+        value='0',
+    )
+
+    qt_shared_memory = SetEnvironmentVariable(
+        name='QT_X11_NO_MITSHM',
+        value='1',
     )
 
     generate_urdf = ExecuteProcess(
@@ -110,6 +152,11 @@ def generate_launch_description():
     return LaunchDescription([
         *declared_args,
         gazebo_resource_path,
+        gazebo_model_path,
+        gazebo_plugin_path,
+        ogre_resources,
+        vmware_gl_compatibility,
+        qt_shared_memory,
         generate_urdf,
         gzserver,
         gzclient,
@@ -141,7 +188,16 @@ def generate_launch_description():
                     executable='static_joint_states',
                     name='static_joint_states',
                     output='screen',
-                    parameters=[{'use_sim_time': use_sim_time}],
+                    parameters=[
+                        {'use_sim_time': use_sim_time},
+                        {'joint_names': [
+                            'joint_1', 'joint_2', 'joint_3',
+                            'joint_4', 'joint_5', 'joint_6', 'finger_joint',
+                        ]},
+                        {'joint_positions': [
+                            0.0, 0.0, 1.5708, 0.0, 1.5708, 0.0, 0.78,
+                        ]},
+                    ],
                     condition=IfCondition(publish_static_joint_states),
                 ),
             ],

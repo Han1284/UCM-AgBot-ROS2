@@ -22,31 +22,38 @@
     <origin xyz="0 0 ${plate_height}" rpy="0 0 0"/>
   </joint>
 
+  <xacro:rg2_gripper prefix="" parent_link="flange"/>
+
+  <!-- Official Intel RealSense D435 visual; Gazebo's sanitized copy uses a box. -->
   <link name="camera_link">
     <visual>
+      <origin xyz="0.0043 -0.0175 0" rpy="1.57079632679 0 1.57079632679"/>
       <geometry>
-        <box size="0.04 0.09 0.03"/>
+        <mesh filename="package://realsense2_description/meshes/d435.dae"/>
       </geometry>
-      <material name="camera_black">
-        <color rgba="0.10 0.10 0.10 1.0"/>
-      </material>
     </visual>
     <collision>
+      <origin xyz="0 -0.0175 0" rpy="0 0 0"/>
       <geometry>
-        <box size="0.04 0.09 0.03"/>
+        <box size="0.02505 0.090 0.025"/>
       </geometry>
     </collision>
     <inertial>
-      <mass value="0.10"/>
-      <inertia ixx="0.0002" ixy="0.0" ixz="0.0" iyy="0.0002" iyz="0.0" izz="0.0002"/>
+      <mass value="0.072"/>
+      <inertia ixx="0.003881243" ixy="0" ixz="0" iyy="0.000498940" iyz="0" izz="0.003879257"/>
     </inertial>
   </link>
 
+  <!-- RoMu4o eye-in-hand camera pose from the original TM model. -->
   <joint name="hand_camera_joint" type="fixed">
     <parent link="link_6"/>
     <child link="camera_link"/>
-    <origin xyz="0.0175 0.1243 0.01933" rpy="0.0 -1.5707 -1.5707"/>
+    <origin xyz="0.0175 0.1243 0.01933" rpy="0 -1.5707 -1.5707"/>
   </joint>
+
+  <gazebo reference="hand_camera_joint">
+    <preserveFixedJoint>true</preserveFixedJoint>
+  </gazebo>
 
   <link name="camera_color_optical_frame"/>
   <joint name="camera_color_optical_joint" type="fixed">
@@ -62,17 +69,10 @@
     <origin xyz="0 0 0" rpy="-1.57079632679 0 -1.57079632679"/>
   </joint>
 
-  <xacro:rg2_gripper prefix="" parent_link="flange"/>
-
   <gazebo>
     <static>true</static>
   </gazebo>
 
   <xacro:tm5_gazebo_safe prefix=""/>
   <xacro:rg2_gazebo_safe prefix=""/>
-  <xacro:bench_depth_camera
-      parent_link="camera_link"
-      frame_name="camera_depth_optical_frame"
-      namespace="/camera"/>
-
 </robot>
