@@ -2,8 +2,8 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, TimerAction
-from launch.conditions import IfCondition
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import Command, LaunchConfiguration
 from launch_ros.actions import Node
 import yaml
@@ -18,15 +18,16 @@ def load_yaml(package_name, file_path):
 
 def generate_launch_description():
     pkg_sim = get_package_share_directory('leaf_manipulation_sim')
-
-    rviz = LaunchConfiguration('rviz')
     radius = LaunchConfiguration('radius')
     repetitions = LaunchConfiguration('repetitions')
     samples_per_circle = LaunchConfiguration('samples_per_circle')
     velocity_scale = LaunchConfiguration('velocity_scale')
     acceleration_scale = LaunchConfiguration('acceleration_scale')
+    finger_position = LaunchConfiguration('finger_position')
+    gui = LaunchConfiguration('gui')
+    rviz = LaunchConfiguration('rviz')
 
-    urdf_path = os.path.join(pkg_sim, 'urdf', 'fixed_tm5_rg2.urdf.xacro')
+    urdf_path = os.path.join(pkg_sim, 'urdf', 'leaf_arm.sim.urdf.xacro')
     robot_description = {'robot_description': Command(['xacro ', urdf_path])}
     robot_description_semantic = {
         'robot_description_semantic': open(
@@ -36,73 +37,28 @@ def generate_launch_description():
                 'tm5-900.srdf',
             ),
             encoding='utf-8',
-        ).read()
+        ).read().replace(
+            '<virtual_joint name="virtual_joint" type="fixed" parent_frame="world" child_link="base" />',
+            '',
+        )
     }
     kinematics_yaml = load_yaml('tm_moveit_config_tm5-900', 'config/kinematics.yaml')
-    joint_limits_yaml = load_yaml('tm_moveit_config_tm5-900', 'config/joint_limits.yaml')
-    moveit_controllers = load_yaml('leaf_manipulation_sim', 'config/moveit_controllers.yaml')
-    ompl_planning_yaml = load_yaml('tm_moveit_config_tm5-900', 'config/ompl_planning.yaml')
-    ompl_planning_pipeline_config = {
-        'ompl': {
-            'planning_plugin': 'ompl_interface/OMPLPlanner',
-            'request_adapters': (
-                'default_planner_request_adapters/AddTimeOptimalParameterization '
-                'default_planner_request_adapters/FixWorkspaceBounds '
-                'default_planner_request_adapters/FixStartStateBounds '
-                'default_planner_request_adapters/FixStartStateCollision '
-                'default_planner_request_adapters/FixStartStatePathConstraints'
-            ),
-            'start_state_max_bounds_error': 0.1,
-        }
-    }
-    ompl_planning_pipeline_config['ompl'].update(ompl_planning_yaml)
 
     return LaunchDescription([
+        DeclareLaunchArgument('gui', default_value='true'),
         DeclareLaunchArgument('rviz', default_value='true'),
         DeclareLaunchArgument('radius', default_value='0.10'),
         DeclareLaunchArgument('repetitions', default_value='3'),
         DeclareLaunchArgument('samples_per_circle', default_value='60'),
         DeclareLaunchArgument('velocity_scale', default_value='0.2'),
         DeclareLaunchArgument('acceleration_scale', default_value='0.2'),
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='world_to_base_root_tf',
-            output='screen',
-            arguments=['0', '0', '0', '0', '0', '0', 'world', 'base_root'],
+        DeclareLaunchArgument('finger_position', default_value='0.10'),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                os.path.join(pkg_sim, 'launch', 'circle_stack.launch.py')
+            ),
+            launch_arguments={'gui': gui, 'rviz': rviz}.items(),
         ),
-        Node(
-            package='robot_state_publisher',
-            executable='robot_state_publisher',
-            output='screen',
-            parameters=[robot_description],
-        ),
-        Node(
-            package='moveit_ros_move_group',
-            executable='move_group',
-            output='screen',
-            parameters=[
-                robot_description,
-                robot_description_semantic,
-                {'robot_description_kinematics': kinematics_yaml},
-                {'robot_description_planning': joint_limits_yaml},
-                ompl_planning_pipeline_config,
-                {'moveit_simple_controller_manager': moveit_controllers},
-                {'moveit_controller_manager': 'moveit_simple_controller_manager/MoveItSimpleControllerManager'},
-                {'publish_robot_description_semantic': True},
-                {'allow_trajectory_execution': False},
-            ],
-        ),
-        Node(
-            package='rviz2',
-            executable='rviz2',
-            name='rviz2',
-            output='screen',
-            arguments=['-d', os.path.join(pkg_sim, 'rviz', 'leaf_manipulation.rviz')],
-            condition=IfCondition(rviz),
-            parameters=[robot_description, robot_description_semantic],
-        ),
-
         TimerAction(
             period=2.0,
             actions=[
@@ -119,6 +75,8 @@ def generate_launch_description():
                         {'samples_per_circle': samples_per_circle},
                         {'velocity_scale': velocity_scale},
                         {'acceleration_scale': acceleration_scale},
+                        {'finger_position': finger_position},
+                        {'use_sim_time': True},
                     ],
                 ),
             ],

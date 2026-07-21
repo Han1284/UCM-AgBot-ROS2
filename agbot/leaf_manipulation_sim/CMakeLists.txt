@@ -9,6 +9,7 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(moveit_ros_planning_interface REQUIRED)
@@ -20,6 +21,7 @@ add_executable(circle_motion_demo src/circle_motion_demo.cpp)
 ament_target_dependencies(circle_motion_demo
   rclcpp
   sensor_msgs
+  std_msgs
   geometry_msgs
   nav_msgs
   moveit_ros_planning_interface
@@ -30,6 +32,7 @@ add_executable(move_to_pose_grasp_demo src/move_to_pose_grasp_demo.cpp)
 ament_target_dependencies(move_to_pose_grasp_demo
   rclcpp
   sensor_msgs
+  std_msgs
   geometry_msgs
   nav_msgs
   moveit_ros_planning_interface
@@ -64,9 +67,33 @@ install(PROGRAMS
 )
 
 install(PROGRAMS
+  leaf_manipulation_sim/initial_controller_commands.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME initial_controller_commands
+)
+
+install(PROGRAMS
   leaf_manipulation_sim/prompt_pose_grasp_demo.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME prompt_pose_grasp_demo
+)
+
+install(PROGRAMS
+  leaf_manipulation_sim/leaf_pose_adapter.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME leaf_pose_adapter
+)
+
+install(PROGRAMS
+  leaf_manipulation_sim/mock_leaf_pose_publisher.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME mock_leaf_pose_publisher
+)
+
+install(PROGRAMS
+  leaf_manipulation_sim/leaf_grasp_demo.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME leaf_grasp_demo
 )
 
 if(BUILD_TESTING)

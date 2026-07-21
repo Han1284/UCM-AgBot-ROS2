@@ -18,7 +18,7 @@ def load_yaml(package_name, file_path):
 def generate_launch_description():
     pkg_sim = get_package_share_directory('leaf_manipulation_sim')
 
-    urdf_path = os.path.join(pkg_sim, 'urdf', 'fixed_tm5_rg2.urdf.xacro')
+    urdf_path = os.path.join(pkg_sim, 'urdf', 'leaf_arm.sim.urdf.xacro')
     robot_description = {'robot_description': Command(['xacro ', urdf_path])}
     robot_description_semantic = {
         'robot_description_semantic': open(
@@ -28,7 +28,10 @@ def generate_launch_description():
                 'tm5-900.srdf',
             ),
             encoding='utf-8',
-        ).read()
+        ).read().replace(
+            '<virtual_joint name="virtual_joint" type="fixed" parent_frame="world" child_link="base" />',
+            '',
+        )
     }
     kinematics_yaml = load_yaml('tm_moveit_config_tm5-900', 'config/kinematics.yaml')
 
@@ -70,6 +73,7 @@ def generate_launch_description():
                 robot_description,
                 robot_description_semantic,
                 {'robot_description_kinematics': kinematics_yaml},
+                {'use_sim_time': True},
                 *[{name: LaunchConfiguration(name)} for name in args],
             ],
         )

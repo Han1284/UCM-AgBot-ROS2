@@ -1,9 +1,8 @@
 <?xml version="1.0"?>
-<robot name="leaf_manipulation_sim" xmlns:xacro="http://www.ros.org/wiki/xacro">
+<robot name="tm5-900" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
   <xacro:include filename="$(find tm_description)/xacro/macro.materials.xacro"/>
   <xacro:include filename="$(find tm_description)/xacro/macro.tm5-900-nominal.urdf.xacro"/>
-  <xacro:include filename="$(find tm_description)/xacro/macro.transmission.xacro"/>
   <xacro:include filename="$(find leaf_manipulation_sim)/urdf/parts/fixed_mount.xacro"/>
   <xacro:include filename="$(find leaf_manipulation_sim)/urdf/parts/rg2_mount.xacro"/>
   <xacro:include filename="$(find leaf_manipulation_sim)/urdf/parts/gazebo_plugins.xacro"/>
@@ -23,7 +22,6 @@
 
   <xacro:tmr_materials/>
   <xacro:tm5-900 ns="" prefix="" color="white" format="stl"/>
-  <xacro:tmr_transmission prefix="" hw_iface="hardware_interface/PositionJointInterface"/>
 
   <joint name="pedestal_to_arm_base" type="fixed">
     <parent link="pedestal_link"/>
@@ -36,7 +34,19 @@
   <xacro:tm5_gazebo_safe prefix=""/>
   <xacro:rg2_gazebo_safe prefix=""/>
   <xacro:rg2_mimic_plugins prefix=""/>
-  <xacro:gazebo_ros_control_plugin/>
+  <ros2_control name="GazeboSystem" type="system">
+    <hardware>
+      <plugin>gazebo_ros2_control/GazeboSystem</plugin>
+    </hardware>
+    <joint name="joint_1"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+    <joint name="joint_2"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+    <joint name="joint_3"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+    <joint name="joint_4"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+    <joint name="joint_5"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+    <joint name="joint_6"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+    <joint name="finger_joint"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+  </ros2_control>
+  <xacro:gazebo_ros2_control_plugin/>
   <xacro:bench_depth_camera parent_link="camera_link"/>
 
   <gazebo reference="link_1"><selfCollide>true</selfCollide></gazebo>

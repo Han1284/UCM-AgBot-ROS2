@@ -50,9 +50,9 @@ def generate_launch_description():
             'world',
             default_value=os.path.join(pkg_sim, 'worlds', 'fixed_arm_empty.world'),
             description='Gazebo world file'),
-        DeclareLaunchArgument('gui', default_value='false'),
+        DeclareLaunchArgument('gui', default_value='true'),
         DeclareLaunchArgument('rviz', default_value='true'),
-        DeclareLaunchArgument('software_gzclient', default_value='true'),
+        DeclareLaunchArgument('software_gzclient', default_value='false'),
         DeclareLaunchArgument('publish_static_joint_states', default_value='true'),
     ]
 
@@ -72,9 +72,16 @@ def generate_launch_description():
         name='GAZEBO_MODEL_PATH',
         value=':'.join([
             os.path.join(pkg_sim, 'models'),
+            os.path.dirname(pkg_tm),
+            os.path.dirname(pkg_rg),
             gazebo_models,
             os.environ.get('GAZEBO_MODEL_PATH', ''),
         ]),
+    )
+
+    gazebo_model_database = SetEnvironmentVariable(
+        name='GAZEBO_MODEL_DATABASE_URI',
+        value='',
     )
 
     gazebo_plugin_path = SetEnvironmentVariable(
@@ -153,6 +160,7 @@ def generate_launch_description():
         *declared_args,
         gazebo_resource_path,
         gazebo_model_path,
+        gazebo_model_database,
         gazebo_plugin_path,
         ogre_resources,
         vmware_gl_compatibility,
@@ -166,7 +174,7 @@ def generate_launch_description():
             executable='static_transform_publisher',
             name='world_to_base_root_tf',
             output='screen',
-            arguments=['0', '0', '0', '0', '0', '0', 'world', 'base_root'],
+            arguments=['--frame-id', 'world', '--child-frame-id', 'base_root'],
             parameters=[{'use_sim_time': use_sim_time}],
         ),
 

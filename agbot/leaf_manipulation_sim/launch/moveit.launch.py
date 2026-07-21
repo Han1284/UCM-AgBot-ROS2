@@ -32,7 +32,7 @@ def generate_launch_description():
                 'tm5-900.srdf',
             ),
             encoding='utf-8',
-        ).read()
+        ).read().replace('child_link="base"', 'child_link="base_root"')
     }
 
     kinematics_yaml = load_yaml('tm_moveit_config_tm5-900', 'config/kinematics.yaml')

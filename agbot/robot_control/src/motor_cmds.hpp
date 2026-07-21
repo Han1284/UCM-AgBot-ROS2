@@ -102,7 +102,7 @@ public:
     for (const auto& value : data_) {
         ss << static_cast<int>(value) << ' ';
     }
-    RCLCPP_INFO(rclcpp::get_logger("RobotCommands"), ss.str());
+    RCLCPP_INFO(rclcpp::get_logger("RobotCommands"), "%s", ss.str().c_str());
   }
 
 private:

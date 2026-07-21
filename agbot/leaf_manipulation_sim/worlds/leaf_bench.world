@@ -9,6 +9,13 @@
       <shadows>true</shadows>
     </scene>
 
+    <gui fullscreen="0">
+      <camera name="leaf_bench_camera">
+        <pose>2.8 -2.8 2.2 0 0.35 2.35</pose>
+        <view_controller>orbit</view_controller>
+      </camera>
+    </gui>
+
     <include>
       <uri>model://sun</uri>
     </include>

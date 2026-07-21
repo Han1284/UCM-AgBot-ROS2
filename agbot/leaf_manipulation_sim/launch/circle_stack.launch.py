@@ -2,8 +2,9 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import Command, LaunchConfiguration
 from launch_ros.actions import Node
 import yaml
@@ -20,8 +21,9 @@ def generate_launch_description():
     pkg_sim = get_package_share_directory('leaf_manipulation_sim')
 
     rviz = LaunchConfiguration('rviz')
+    gui = LaunchConfiguration('gui')
 
-    urdf_path = os.path.join(pkg_sim, 'urdf', 'fixed_tm5_rg2.urdf.xacro')
+    urdf_path = os.path.join(pkg_sim, 'urdf', 'leaf_arm.sim.urdf.xacro')
     robot_description = {'robot_description': Command(['xacro ', urdf_path])}
     robot_description_semantic = {
         'robot_description_semantic': open(
@@ -31,7 +33,10 @@ def generate_launch_description():
                 'tm5-900.srdf',
             ),
             encoding='utf-8',
-        ).read()
+        ).read().replace(
+            '<virtual_joint name="virtual_joint" type="fixed" parent_frame="world" child_link="base" />',
+            '',
+        )
     }
     kinematics_yaml = load_yaml('tm_moveit_config_tm5-900', 'config/kinematics.yaml')
     joint_limits_yaml = load_yaml('tm_moveit_config_tm5-900', 'config/joint_limits.yaml')
@@ -54,35 +59,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         DeclareLaunchArgument('rviz', default_value='true'),
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='world_to_base_root_tf',
-            output='screen',
-            arguments=['0', '0', '0', '0', '0', '0', 'world', 'base_root'],
-        ),
-        Node(
-            package='robot_state_publisher',
-            executable='robot_state_publisher',
-            output='screen',
-            parameters=[robot_description],
-        ),
-        Node(
-            package='leaf_manipulation_sim',
-            executable='static_joint_states',
-            name='initial_ready_pose',
-            output='screen',
-            parameters=[
-                {'use_sim_time': False},
-                {'publish_rate': 30.0},
-                {'duration_sec': 2.0},
-                {'joint_names': [
-                    'joint_1', 'joint_2', 'joint_3',
-                    'joint_4', 'joint_5', 'joint_6', 'finger_joint',
-                ]},
-                {'joint_positions': [0.0, 0.0, 1.5708, 0.0, 1.5708, 0.0, 0.10]},
-            ],
-        ),
+        DeclareLaunchArgument('gui', default_value='true'),
         Node(
             package='moveit_ros_move_group',
             executable='move_group',
@@ -97,6 +74,7 @@ def generate_launch_description():
                 {'moveit_controller_manager': 'moveit_simple_controller_manager/MoveItSimpleControllerManager'},
                 {'publish_robot_description_semantic': True},
                 {'allow_trajectory_execution': False},
+                {'use_sim_time': True},
             ],
         ),
         Node(
@@ -106,6 +84,16 @@ def generate_launch_description():
             output='screen',
             arguments=['-d', os.path.join(pkg_sim, 'rviz', 'leaf_manipulation.rviz')],
             condition=IfCondition(rviz),
-            parameters=[robot_description, robot_description_semantic],
+            parameters=[robot_description, robot_description_semantic, {'use_sim_time': True}],
+        ),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                os.path.join(pkg_sim, 'launch', 'gazebo.launch.py')
+            ),
+            launch_arguments={
+                'gui': gui,
+                'rviz': 'false',
+                'spawn_robot': 'true',
+            }.items(),
         ),
     ])

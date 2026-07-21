@@ -61,6 +61,20 @@
       <child link="camera_link"/>
       <origin xyz="0.30 0.0 0.45" rpy="0 0.35 0"/>
     </joint>
+
+    <link name="camera_color_optical_frame"/>
+    <joint name="camera_color_optical_joint" type="fixed">
+      <parent link="camera_link"/>
+      <child link="camera_color_optical_frame"/>
+      <origin xyz="0 0 0" rpy="-1.57079632679 0 -1.57079632679"/>
+    </joint>
+
+    <link name="camera_depth_optical_frame"/>
+    <joint name="camera_depth_optical_joint" type="fixed">
+      <parent link="camera_link"/>
+      <child link="camera_depth_optical_frame"/>
+      <origin xyz="0 0 0" rpy="-1.57079632679 0 -1.57079632679"/>
+    </joint>
   </xacro:macro>
 
 </robot>

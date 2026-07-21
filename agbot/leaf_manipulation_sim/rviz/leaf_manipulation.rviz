@@ -247,6 +247,34 @@ Visualization Manager:
         TF: true
         Value: true
       Zoom Factor: 1
+    - Class: rviz_default_plugins/Image
+      Enabled: true
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Name: RGB Image
+      Normalize Range: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /camera/color/image_raw
+      Value: true
+    - Class: rviz_default_plugins/Image
+      Enabled: true
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Name: Depth Image
+      Normalize Range: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /camera/depth/image_raw
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -287,6 +315,10 @@ Visualization Manager:
     Saved: ~
 Window Geometry:
   Camera:
+    collapsed: false
+  RGB Image:
+    collapsed: false
+  Depth Image:
     collapsed: false
   Displays:
     collapsed: false

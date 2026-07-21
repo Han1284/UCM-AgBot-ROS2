@@ -19,7 +19,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         DeclareLaunchArgument('use_sim_time', default_value='true'),
-        DeclareLaunchArgument('gui', default_value='false'),
+        DeclareLaunchArgument('gui', default_value='true'),
         DeclareLaunchArgument('rviz', default_value='true'),
         DeclareLaunchArgument('use_moveit', default_value='false'),
         DeclareLaunchArgument('publish_static_joint_states', default_value='true'),

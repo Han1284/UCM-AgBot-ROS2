@@ -12,6 +12,8 @@ from launch_ros.actions import Node
 def generate_launch_description():
     pkg_sim = get_package_share_directory('leaf_manipulation_sim')
     pkg_gazebo_ros = get_package_share_directory('gazebo_ros')
+    pkg_tm = get_package_share_directory('tm_description')
+    pkg_rg = get_package_share_directory('onrobot_rg_description')
 
     use_sim_time = LaunchConfiguration('use_sim_time')
     world = LaunchConfiguration('world')
@@ -28,7 +30,17 @@ def generate_launch_description():
 
     gazebo_model_path = SetEnvironmentVariable(
         name='GAZEBO_MODEL_PATH',
-        value=[models_path, ':', os.environ.get('GAZEBO_MODEL_PATH', '')],
+        value=[
+            models_path,
+            ':', os.path.dirname(pkg_tm),
+            ':', os.path.dirname(pkg_rg),
+            ':/usr/share/gazebo-11/models:',
+            os.environ.get('GAZEBO_MODEL_PATH', ''),
+        ],
+    )
+    gazebo_model_database = SetEnvironmentVariable(
+        name='GAZEBO_MODEL_DATABASE_URI',
+        value='',
     )
 
     plant_spawns = []
@@ -64,6 +76,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         gazebo_model_path,
+        gazebo_model_database,
         DeclareLaunchArgument('use_sim_time', default_value='true'),
         DeclareLaunchArgument(
             'world',
@@ -95,15 +108,6 @@ def generate_launch_description():
             }],
         ),
 
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='world_to_base_tf',
-            output='screen',
-            arguments=['0', '0', '0', '0', '0', '0', 'world', 'base'],
-            parameters=[{'use_sim_time': use_sim_time}],
-        ),
-
         TimerAction(
             period=3.0,
             actions=[
@@ -133,14 +137,23 @@ def generate_launch_description():
                     executable='spawner',
                     output='screen',
                     arguments=[
-                        'joint_state_controller',
+                        'joint_state_broadcaster',
                         'arm_position_controller',
                         'gripper_position_controller',
+                        '--param-file', controllers_file,
                     ],
-                    parameters=[
-                        controllers_file,
-                        {'use_sim_time': use_sim_time},
-                    ],
+                ),
+            ],
+        ),
+
+        TimerAction(
+            period=6.5,
+            actions=[
+                Node(
+                    package='leaf_manipulation_sim',
+                    executable='initial_controller_commands',
+                    output='screen',
+                    parameters=[{'use_sim_time': use_sim_time}],
                 ),
             ],
         ),

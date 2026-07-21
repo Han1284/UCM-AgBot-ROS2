@@ -15,7 +15,7 @@
 #include <moveit/robot_state/robot_state.h>
 #include <nav_msgs/msg/path.hpp>
 #include <rclcpp/rclcpp.hpp>
-#include <sensor_msgs/msg/joint_state.hpp>
+#include <std_msgs/msg/float64_multi_array.hpp>
 
 using namespace std::chrono_literals;
 
@@ -44,6 +44,16 @@ geometry_msgs::msg::Pose eigenToPose(const Eigen::Isometry3d& transform)
   return pose;
 }
 
+Eigen::Isometry3d poseToEigen(const geometry_msgs::msg::Pose& pose)
+{
+  Eigen::Isometry3d transform = Eigen::Isometry3d::Identity();
+  transform.translation() = Eigen::Vector3d(pose.position.x, pose.position.y, pose.position.z);
+  const Eigen::Quaterniond quaternion(
+    pose.orientation.w, pose.orientation.x, pose.orientation.y, pose.orientation.z);
+  transform.linear() = quaternion.normalized().toRotationMatrix();
+  return transform;
+}
+
 }  // namespace
 
 class MoveToPoseGraspDemo
@@ -51,8 +61,10 @@ class MoveToPoseGraspDemo
 public:
   explicit MoveToPoseGraspDemo(const rclcpp::Node::SharedPtr& node)
   : node_(node),
-    system_clock_(RCL_SYSTEM_TIME),
-    joint_state_pub_(node_->create_publisher<sensor_msgs::msg::JointState>("joint_states", 10)),
+    arm_command_pub_(node_->create_publisher<std_msgs::msg::Float64MultiArray>(
+      "/arm_position_controller/commands", 10)),
+    gripper_command_pub_(node_->create_publisher<std_msgs::msg::Float64MultiArray>(
+      "/gripper_position_controller/commands", 10)),
     path_pub_(node_->create_publisher<nav_msgs::msg::Path>("pose_grasp_path", 10)),
     robot_model_loader_(std::make_shared<robot_model_loader::RobotModelLoader>(node_, "robot_description")),
     robot_model_(robot_model_loader_->getModel())
@@ -87,6 +99,9 @@ public:
       RCLCPP_ERROR(node_->get_logger(), "机器人模型不可用");
       return false;
     }
+    if (!waitForGazeboControllers(15s)) {
+      return false;
+    }
 
     resetPath();
     publishStableState(2s);
@@ -96,9 +111,12 @@ public:
       return false;
     }
 
-    const auto start_pose = eigenToPose(initial_state->getGlobalLinkTransform("gripper"));
+    const Eigen::Isometry3d world_to_base = initial_state->getGlobalLinkTransform("base");
+    const auto start_pose = eigenToPose(
+      world_to_base.inverse() * initial_state->getGlobalLinkTransform("gripper"));
     const auto target_pose = makeTargetPose(start_pose);
-    auto target_arm_positions = solveIkTarget(*initial_state, target_pose);
+    const auto target_pose_world = eigenToPose(world_to_base * poseToEigen(target_pose));
+    auto target_arm_positions = solveIkTarget(*initial_state, target_pose_world);
     if (!target_arm_positions) {
       return false;
     }
@@ -262,17 +280,34 @@ private:
 
   void publishState()
   {
-    sensor_msgs::msg::JointState msg;
-    msg.header.stamp = system_clock_.now();
     std::vector<double> positions;
     {
       std::lock_guard<std::mutex> lock(state_mutex_);
-      msg.name = state_names_;
-      msg.position = state_positions_;
       positions = state_positions_;
     }
-    joint_state_pub_->publish(msg);
+    std_msgs::msg::Float64MultiArray arm_command;
+    arm_command.data.assign(positions.begin(), positions.begin() + 6);
+    std_msgs::msg::Float64MultiArray gripper_command;
+    gripper_command.data = {positions.back()};
+    arm_command_pub_->publish(arm_command);
+    gripper_command_pub_->publish(gripper_command);
     publishPathPoint(positions);
+  }
+
+  bool waitForGazeboControllers(std::chrono::seconds timeout)
+  {
+    RCLCPP_INFO(node_->get_logger(), "等待 Gazebo 机械臂与夹爪控制器");
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    while (rclcpp::ok() && std::chrono::steady_clock::now() < deadline) {
+      if (arm_command_pub_->get_subscription_count() > 0 &&
+        gripper_command_pub_->get_subscription_count() > 0)
+      {
+        return true;
+      }
+      rclcpp::sleep_for(100ms);
+    }
+    RCLCPP_ERROR(node_->get_logger(), "Gazebo 控制器在等待期限内未就绪");
+    return false;
   }
 
   void publishStableState(std::chrono::milliseconds duration)
@@ -294,7 +329,7 @@ private:
   void resetPath()
   {
     current_path_.header.frame_id = "base";
-    current_path_.header.stamp = system_clock_.now();
+    current_path_.header.stamp = node_->get_clock()->now();
     current_path_.poses.clear();
     last_path_pose_.reset();
   }
@@ -308,8 +343,10 @@ private:
 
     geometry_msgs::msg::PoseStamped pose_stamped;
     pose_stamped.header.frame_id = "base";
-    pose_stamped.header.stamp = system_clock_.now();
-    pose_stamped.pose = eigenToPose(state->getGlobalLinkTransform("gripper"));
+    pose_stamped.header.stamp = node_->get_clock()->now();
+    pose_stamped.pose = eigenToPose(
+      state->getGlobalLinkTransform("base").inverse() *
+      state->getGlobalLinkTransform("gripper"));
 
     if (last_path_pose_) {
       const double dx = pose_stamped.pose.position.x - last_path_pose_->pose.position.x;
@@ -327,8 +364,8 @@ private:
   }
 
   rclcpp::Node::SharedPtr node_;
-  rclcpp::Clock system_clock_;
-  rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
+  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr arm_command_pub_;
+  rclcpp::Publisher<std_msgs::msg::Float64MultiArray>::SharedPtr gripper_command_pub_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
   robot_model_loader::RobotModelLoaderPtr robot_model_loader_;
   moveit::core::RobotModelPtr robot_model_;
@@ -368,6 +405,14 @@ int main(int argc, char* argv[])
 
   MoveToPoseGraspDemo demo(node);
   const bool ok = demo.run();
+  if (ok) {
+    RCLCPP_INFO(
+      node->get_logger(),
+      "保持最终机械臂与夹爪关节状态；按 Ctrl+C 结束");
+    while (rclcpp::ok()) {
+      rclcpp::sleep_for(100ms);
+    }
+  }
 
   rclcpp::shutdown();
   spinner.join();

@@ -23,8 +23,9 @@ def generate_launch_description():
     samples_per_circle = LaunchConfiguration('samples_per_circle')
     velocity_scale = LaunchConfiguration('velocity_scale')
     acceleration_scale = LaunchConfiguration('acceleration_scale')
+    finger_position = LaunchConfiguration('finger_position')
 
-    urdf_path = os.path.join(pkg_sim, 'urdf', 'fixed_tm5_rg2.urdf.xacro')
+    urdf_path = os.path.join(pkg_sim, 'urdf', 'leaf_arm.sim.urdf.xacro')
     robot_description = {'robot_description': Command(['xacro ', urdf_path])}
     robot_description_semantic = {
         'robot_description_semantic': open(
@@ -34,7 +35,10 @@ def generate_launch_description():
                 'tm5-900.srdf',
             ),
             encoding='utf-8',
-        ).read()
+        ).read().replace(
+            '<virtual_joint name="virtual_joint" type="fixed" parent_frame="world" child_link="base" />',
+            '',
+        )
     }
     kinematics_yaml = load_yaml('tm_moveit_config_tm5-900', 'config/kinematics.yaml')
 
@@ -44,6 +48,7 @@ def generate_launch_description():
         DeclareLaunchArgument('samples_per_circle', default_value='60'),
         DeclareLaunchArgument('velocity_scale', default_value='0.2'),
         DeclareLaunchArgument('acceleration_scale', default_value='0.2'),
+        DeclareLaunchArgument('finger_position', default_value='0.10'),
         Node(
             package='leaf_manipulation_sim',
             executable='circle_motion_demo',
@@ -57,6 +62,8 @@ def generate_launch_description():
                 {'samples_per_circle': samples_per_circle},
                 {'velocity_scale': velocity_scale},
                 {'acceleration_scale': acceleration_scale},
+                {'finger_position': finger_position},
+                {'use_sim_time': True},
             ],
         ),
     ])
