@@ -24,7 +24,7 @@
 
   <xacro:rg2_gripper prefix="" parent_link="flange"/>
 
-  <!-- Official Intel RealSense D435 visual; Gazebo's sanitized copy uses a box. -->
+  <!-- Official Intel RealSense D435 visual, shared by RViz and Gazebo. -->
   <link name="camera_link">
     <visual>
       <origin xyz="0.0043 -0.0175 0" rpy="1.57079632679 0 1.57079632679"/>

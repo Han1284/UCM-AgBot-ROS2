@@ -3,6 +3,7 @@
 
   <xacro:include filename="$(find tm_description)/xacro/macro.materials.xacro"/>
   <xacro:include filename="$(find tm_description)/xacro/macro.tm5-900-nominal.urdf.xacro"/>
+  <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro"/>
   <xacro:include filename="$(find leaf_manipulation_sim)/urdf/parts/fixed_mount.xacro"/>
   <xacro:include filename="$(find leaf_manipulation_sim)/urdf/parts/rg2_mount.xacro"/>
   <xacro:include filename="$(find leaf_manipulation_sim)/urdf/parts/gazebo_plugins.xacro"/>
@@ -10,12 +11,11 @@
 
   <link name="world"/>
 
-  <xacro:fixed_pedestal height="0.75" width="0.45" depth="0.45"/>
-  <xacro:bench_camera parent_link="pedestal_link"/>
+  <xacro:fixed_pedestal height="0.05" width="0.50" depth="0.50"/>
 
   <xacro:property name="arm_mount_x" value="0.0"/>
   <xacro:property name="arm_mount_y" value="0.0"/>
-  <xacro:property name="arm_mount_z" value="0.40"/>
+  <xacro:property name="arm_mount_z" value="0.025"/>
   <xacro:property name="arm_mount_roll" value="0.0"/>
   <xacro:property name="arm_mount_pitch" value="0.0"/>
   <xacro:property name="arm_mount_yaw" value="0.0"/>
@@ -31,6 +31,33 @@
   </joint>
 
   <xacro:rg2_gripper prefix="" parent_link="flange"/>
+
+  <!-- Native TMvision optical pose from the official modified TM5-900 model. -->
+  <link name="tmvision_camera_frame"/>
+  <joint name="tmvision_camera_joint" type="fixed">
+    <parent link="link_6"/>
+    <child link="tmvision_camera_frame"/>
+    <origin xyz="0.0175 0.1243 0.01933" rpy="0 -1.5707 -1.5707"/>
+  </joint>
+
+  <!--
+    Align the D435 with TMvision and place its depth-camera frame 15 mm in
+    front of the native lens.  The offset below compensates for the official
+    D435 model's bottom-screw-to-camera-frame transform, leaving the detailed
+    D435 body about 2.5 mm in front of the TMvision lens surface.
+  -->
+  <xacro:sensor_d435
+    parent="link_6"
+    name="camera"
+    use_nominal_extrinsics="true"
+    add_plug="false"
+    use_mesh="true">
+    <!-- Equivalent to xyz="0.0044 -0.0175 -0.0125" in TMvision frame. -->
+    <origin xyz="0.0 0.1118 0.02373" rpy="0 -1.5707 -1.5707"/>
+  </xacro:sensor_d435>
+  <gazebo reference="camera_joint">
+    <preserveFixedJoint>true</preserveFixedJoint>
+  </gazebo>
   <xacro:tm5_gazebo_safe prefix=""/>
   <xacro:rg2_gazebo_safe prefix=""/>
   <xacro:rg2_mimic_plugins prefix=""/>
@@ -47,7 +74,8 @@
     <joint name="finger_joint"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
   </ros2_control>
   <xacro:gazebo_ros2_control_plugin/>
-  <xacro:bench_depth_camera parent_link="camera_link"/>
+  <!-- Gazebo reduces camera_link into this preserved mounting frame. -->
+  <xacro:d435_depth_camera parent_link="camera_bottom_screw_frame"/>
 
   <gazebo reference="link_1"><selfCollide>true</selfCollide></gazebo>
   <gazebo reference="link_2"><selfCollide>true</selfCollide></gazebo>

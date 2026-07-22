@@ -16,6 +16,13 @@
       <uri>model://calibration_floor</uri>
     </include>
 
+    <!-- Independent scene object; the fixed-arm URDF is intentionally untouched. -->
+    <include>
+      <uri>model://simple_potted_plant</uri>
+      <name>plant_in_front_of_arm</name>
+      <pose>0.60 0.00 0 0 0 0</pose>
+    </include>
+
     <!-- Gazebo Classic freezes when a rendering sensor is embedded in the
          static articulated TM model. This headless renderer supplies RGBD;
          the official D435 visual and TF remain attached to the robot URDF. -->

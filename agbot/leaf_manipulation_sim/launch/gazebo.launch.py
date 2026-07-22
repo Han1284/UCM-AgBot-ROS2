@@ -14,6 +14,7 @@ def generate_launch_description():
     pkg_gazebo_ros = get_package_share_directory('gazebo_ros')
     pkg_tm = get_package_share_directory('tm_description')
     pkg_rg = get_package_share_directory('onrobot_rg_description')
+    pkg_realsense = get_package_share_directory('realsense2_description')
 
     use_sim_time = LaunchConfiguration('use_sim_time')
     world = LaunchConfiguration('world')
@@ -34,6 +35,7 @@ def generate_launch_description():
             models_path,
             ':', os.path.dirname(pkg_tm),
             ':', os.path.dirname(pkg_rg),
+            ':', os.path.dirname(pkg_realsense),
             ':/usr/share/gazebo-11/models:',
             os.environ.get('GAZEBO_MODEL_PATH', ''),
         ],
@@ -42,37 +44,6 @@ def generate_launch_description():
         name='GAZEBO_MODEL_DATABASE_URI',
         value='',
     )
-
-    plant_spawns = []
-    scene_models = [
-        ('plant_stem', '0.55', '0.0', '0.0', '0.0'),
-        ('leaf_target_1', '0.55', '0.10', '0.70', '0.0'),
-        ('leaf_target_2', '0.58', '-0.08', '0.75', '0.3'),
-        ('leaf_target_3', '0.52', '0.00', '0.82', '-0.2'),
-    ]
-    for entity_name, x, y, z, yaw in scene_models:
-        model_name = 'plant_stem' if entity_name == 'plant_stem' else 'leaf_target'
-        sdf_path = os.path.join(models_path, model_name, 'model.sdf')
-        plant_spawns.append(
-            TimerAction(
-                period=4.0,
-                actions=[
-                    Node(
-                        package='gazebo_ros',
-                        executable='spawn_entity.py',
-                        output='screen',
-                        arguments=[
-                            '-entity', entity_name,
-                            '-file', sdf_path,
-                            '-x', x,
-                            '-y', y,
-                            '-z', z,
-                            '-Y', yaw,
-                        ],
-                    ),
-                ],
-            )
-        )
 
     return LaunchDescription([
         gazebo_model_path,
@@ -126,8 +97,6 @@ def generate_launch_description():
                 ),
             ],
         ),
-
-        *plant_spawns,
 
         TimerAction(
             period=6.0,

@@ -49,9 +49,9 @@
     </gazebo>
   </xacro:macro>
 
-  <xacro:macro name="bench_depth_camera" params="parent_link:='camera_link' frame_name:='camera_depth_optical_frame' namespace:='/camera'">
+  <xacro:macro name="d435_depth_camera" params="parent_link:='camera_link' frame_name:='camera_depth_optical_frame' namespace:='/camera'">
     <gazebo reference="${parent_link}">
-      <sensor name="bench_depth_camera" type="depth">
+      <sensor name="d435_depth_camera" type="depth">
         <always_on>true</always_on>
         <update_rate>10.0</update_rate>
         <visualize>false</visualize>
@@ -67,14 +67,14 @@
             <far>3.0</far>
           </clip>
         </camera>
-        <plugin name="bench_depth_camera_plugin" filename="libgazebo_ros_camera.so">
+        <plugin name="d435_plugin" filename="libgazebo_ros_camera.so">
           <ros>
             <namespace>${namespace}</namespace>
-            <remapping>bench_depth_camera/image_raw:=color/image_raw</remapping>
-            <remapping>bench_depth_camera/camera_info:=color/camera_info</remapping>
-            <remapping>bench_depth_camera/depth/image_raw:=depth/image_raw</remapping>
-            <remapping>bench_depth_camera/depth/camera_info:=depth/camera_info</remapping>
-            <remapping>bench_depth_camera/points:=depth/color/points</remapping>
+            <remapping>d435_depth_camera/image_raw:=color/image_raw</remapping>
+            <remapping>d435_depth_camera/camera_info:=color/camera_info</remapping>
+            <remapping>d435_depth_camera/depth/image_raw:=depth/image_raw</remapping>
+            <remapping>d435_depth_camera/depth/camera_info:=depth/camera_info</remapping>
+            <remapping>d435_depth_camera/points:=depth/color/points</remapping>
           </ros>
           <frame_name>${frame_name}</frame_name>
         </plugin>

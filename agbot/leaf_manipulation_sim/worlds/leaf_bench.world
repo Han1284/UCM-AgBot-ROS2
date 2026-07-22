@@ -21,7 +21,7 @@
     </include>
 
     <include>
-      <uri>model://ground_plane</uri>
+      <uri>model://calibration_floor</uri>
     </include>
 
   </world>

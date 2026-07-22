@@ -169,7 +169,7 @@ ros2 launch leaf_manipulation_sim circle_demo.launch.py \
   velocity_scale:=0.2 acceleration_scale:=0.2 finger_position:=0.10
 ```
 
-推荐把仿真栈和演示节点拆成两个终端。终端一会同时启动 Gazebo GUI、RViz、MoveIt、控制器和相机：
+推荐把仿真栈和演示节点拆成两个终端。终端一会同时启动 Gazebo GUI、RViz、MoveIt、控制器和安装在 `link_6` 前方的 RealSense D435 手眼相机。当前场景只保留 5 cm 厚的机械臂底板，不生成植物模型：
 
 ```bash
 ros2 launch leaf_manipulation_sim circle_stack.launch.py \

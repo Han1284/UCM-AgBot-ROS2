@@ -1,0 +1,38 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <model name="simple_potted_plant">
+    <static>true</static>
+    <link name="plant_link">
+      <!-- The source FBX was authored in centimetres; the DAE transform is scaled to metres. -->
+      <visual name="plant_visual">
+        <pose>0 0 0.78 0 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://simple_potted_plant/meshes/FlowerPot.dae</uri>
+            <scale>0.0015 0.0015 0.0015</scale>
+          </mesh>
+        </geometry>
+      </visual>
+
+      <!-- Keep contacts robust: use simple solids instead of the dense leaf mesh. -->
+      <collision name="pot_collision">
+        <pose>0 0 0.13 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.16</radius>
+            <length>0.26</length>
+          </cylinder>
+        </geometry>
+      </collision>
+      <collision name="foliage_collision">
+        <pose>0 0 0.48 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.28</radius>
+            <length>0.50</length>
+          </cylinder>
+        </geometry>
+      </collision>
+    </link>
+  </model>
+</sdf>
