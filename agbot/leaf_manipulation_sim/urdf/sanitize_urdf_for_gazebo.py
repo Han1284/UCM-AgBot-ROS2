@@ -28,7 +28,10 @@ def sanitize_tree(root: ET.Element) -> None:
 def main() -> int:
     tree = ET.parse(sys.stdin)
     sanitize_tree(tree.getroot())
-    tree.write(sys.stdout, encoding='unicode', xml_declaration=True)
+    # gazebo_ros/spawn_entity.py reads the file as text and passes that Unicode
+    # string to lxml.  lxml rejects Unicode input that still has an encoding
+    # declaration, so emit a declaration-free XML fragment here.
+    tree.write(sys.stdout, encoding='unicode', xml_declaration=False)
     return 0
 
 

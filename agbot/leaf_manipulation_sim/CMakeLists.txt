@@ -91,6 +91,12 @@ install(PROGRAMS
 )
 
 install(PROGRAMS
+  leaf_manipulation_sim/plant_marker_publisher.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME plant_marker_publisher
+)
+
+install(PROGRAMS
   leaf_manipulation_sim/leaf_grasp_demo.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME leaf_grasp_demo

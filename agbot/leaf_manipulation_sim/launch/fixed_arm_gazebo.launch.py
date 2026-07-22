@@ -203,7 +203,7 @@ def generate_launch_description():
                             'joint_4', 'joint_5', 'joint_6', 'finger_joint',
                         ]},
                         {'joint_positions': [
-                            0.0, 0.0, 1.5708, 0.0, 1.5708, 0.0, 0.78,
+                            0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                         ]},
                     ],
                     condition=IfCondition(publish_static_joint_states),
@@ -224,6 +224,15 @@ def generate_launch_description():
             name='rviz2',
             output='screen',
             arguments=['-d', rviz_config],
+            parameters=[{'use_sim_time': use_sim_time}],
+            condition=IfCondition(rviz),
+        ),
+
+        Node(
+            package='leaf_manipulation_sim',
+            executable='plant_marker_publisher',
+            name='plant_marker_publisher',
+            output='screen',
             parameters=[{'use_sim_time': use_sim_time}],
             condition=IfCondition(rviz),
         ),

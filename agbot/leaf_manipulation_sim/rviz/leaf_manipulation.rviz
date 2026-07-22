@@ -227,26 +227,18 @@ Visualization Manager:
         {}
       Update Interval: 0
       Value: false
-    - Class: rviz_default_plugins/Camera
+    - Class: rviz_default_plugins/Marker
       Enabled: true
-      Image Rendering: background and overlay
-      Name: Camera
-      Overlay Alpha: 0.5
+      Name: PottedPlant
+      Namespaces:
+        simple_potted_plant: true
       Topic:
         Depth: 5
-        Durability Policy: Volatile
+        Durability Policy: Transient Local
         History Policy: Keep Last
-        Reliability Policy: Best Effort
-        Value: "/camera/color/image_raw"
+        Reliability Policy: Reliable
+        Value: /plant_marker
       Value: true
-      Visibility:
-        CirclePath: true
-        Grid: true
-        PoseGraspPath: true
-        RobotModel: true
-        TF: true
-        Value: true
-      Zoom Factor: 1
     - Class: rviz_default_plugins/Image
       Enabled: true
       Max Value: 1
