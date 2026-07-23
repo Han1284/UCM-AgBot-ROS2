@@ -27,7 +27,7 @@ class PlantMarkerPublisher(Node):
         marker.id = 0
         marker.type = Marker.MESH_RESOURCE
         marker.action = Marker.ADD
-        marker.pose.position.x = 0.60
+        marker.pose.position.x = 0.85
         marker.pose.position.y = 0.0
         marker.pose.position.z = 0.0001
         marker.pose.orientation.w = 1.0
@@ -59,7 +59,10 @@ def main(args=None) -> None:
     except KeyboardInterrupt:
         pass
     finally:
-        node.destroy_node()
+        try:
+            node.destroy_node()
+        except KeyboardInterrupt:
+            pass
         if rclpy.ok():
             rclpy.shutdown()
 

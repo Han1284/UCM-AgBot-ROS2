@@ -1,0 +1,34 @@
+# File produced by Open Asset Import Library (http://www.assimp.sf.net)
+# (assimp v5.2.0)
+
+newmtl Material.001
+Kd 1 1 1
+Ka 0 0 0
+Ks 0.800000012 0.800000012 0.800000012
+Ke 0 0 0
+d 1
+Ni 1
+illum 1
+map_Kd ../materials/textures/FlowerPot.png
+
+newmtl Material.002
+Kd 1 1 1
+Ka 0 0 0
+Ks 0.800000012 0.800000012 0.800000012
+Ke 0 0 0
+d 1
+Ni 1
+illum 1
+map_Kd ../materials/textures/FlowerPot.png
+
+newmtl Material.003
+Kd 1 1 1
+Ka 0 0 0
+Ks 0.800000012 0.800000012 0.800000012
+Ke 0 0 0
+d 1
+Ni 1
+Ns 0.911157548
+illum 2
+map_Kd ../materials/textures/FlowerPot.png
+

@@ -25,9 +25,11 @@
   <exec_depend>realsense2_description</exec_depend>
   <exec_depend>tm_moveit_config_tm5-900</exec_depend>
   <exec_depend>onrobot_rg_description</exec_depend>
-  <exec_depend>gazebo_ros</exec_depend>
-  <exec_depend>gazebo_plugins</exec_depend>
-  <exec_depend>gazebo_ros2_control</exec_depend>
+  <exec_depend>ros_gz_sim</exec_depend>
+  <exec_depend>ros_gz_bridge</exec_depend>
+  <exec_depend>ros_gz_interfaces</exec_depend>
+  <exec_depend>gz_ros2_control</exec_depend>
+  <exec_depend>gazebo_msgs</exec_depend>
   <exec_depend>controller_manager</exec_depend>
   <exec_depend>joint_state_broadcaster</exec_depend>
   <exec_depend>position_controllers</exec_depend>

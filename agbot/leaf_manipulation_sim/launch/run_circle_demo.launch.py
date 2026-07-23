@@ -17,7 +17,6 @@ def load_yaml(package_name, file_path):
 
 def generate_launch_description():
     pkg_sim = get_package_share_directory('leaf_manipulation_sim')
-
     radius = LaunchConfiguration('radius')
     repetitions = LaunchConfiguration('repetitions')
     samples_per_circle = LaunchConfiguration('samples_per_circle')
@@ -40,7 +39,8 @@ def generate_launch_description():
             '',
         )
     }
-    kinematics_yaml = load_yaml('tm_moveit_config_tm5-900', 'config/kinematics.yaml')
+    kinematics_yaml = load_yaml(
+        'tm_moveit_config_tm5-900', 'config/kinematics.yaml')
 
     return LaunchDescription([
         DeclareLaunchArgument('radius', default_value='0.10'),

@@ -4,34 +4,38 @@
   <xacro:include filename="$(find onrobot_rg_description)/urdf/onrobot_rg2_model_macro.xacro"/>
 
   <!-- Visual-only RG2 mount: no transmission (avoids ros_control deps in stage 2) -->
-  <xacro:macro name="movable_inner_knuckle_joint" params="prefix fingerprefix reflect">
+  <xacro:macro name="movable_inner_knuckle_joint" params="prefix fingerprefix reflect use_urdf_mimic">
     <joint name="${prefix}${fingerprefix}_inner_knuckle_joint" type="revolute">
       <origin xyz="0 ${reflect * -0.007678} 0.1422970" rpy="0 0 ${(reflect - 1) * pi / 2}" />
       <parent link="${prefix}onrobot_rg2_base_link" />
       <child link="${prefix}${fingerprefix}_inner_knuckle" />
       <axis xyz="1 0 0" />
       <limit lower="-0.785398" upper="0.785398" velocity="100.0" effort="1000" />
-      <mimic joint="${prefix}finger_joint" multiplier="-1" offset="0" />
+      <xacro:if value="${use_urdf_mimic}">
+        <mimic joint="${prefix}finger_joint" multiplier="-1" offset="0" />
+      </xacro:if>
     </joint>
   </xacro:macro>
 
-  <xacro:macro name="movable_inner_finger_joint" params="prefix fingerprefix">
+  <xacro:macro name="movable_inner_finger_joint" params="prefix fingerprefix use_urdf_mimic">
     <joint name="${prefix}${fingerprefix}_inner_finger_joint" type="revolute">
       <origin xyz="0 ${-(0.056770-0.017178)} ${0.163974-0.125797}" rpy="0 0 0" />
       <parent link="${prefix}${fingerprefix}_outer_knuckle" />
       <child link="${prefix}${fingerprefix}_inner_finger" />
       <axis xyz="1 0 0" />
       <limit lower="-0.872665" upper="0.872665" velocity="100.0" effort="1000" />
-      <mimic joint="${prefix}finger_joint" multiplier="1" offset="0" />
+      <xacro:if value="${use_urdf_mimic}">
+        <mimic joint="${prefix}finger_joint" multiplier="1" offset="0" />
+      </xacro:if>
     </joint>
   </xacro:macro>
 
-  <xacro:macro name="movable_finger_joints" params="prefix fingerprefix reflect">
-    <xacro:movable_inner_knuckle_joint prefix="${prefix}" fingerprefix="${fingerprefix}" reflect="${reflect}"/>
-    <xacro:movable_inner_finger_joint prefix="${prefix}" fingerprefix="${fingerprefix}"/>
+  <xacro:macro name="movable_finger_joints" params="prefix fingerprefix reflect use_urdf_mimic">
+    <xacro:movable_inner_knuckle_joint prefix="${prefix}" fingerprefix="${fingerprefix}" reflect="${reflect}" use_urdf_mimic="${use_urdf_mimic}"/>
+    <xacro:movable_inner_finger_joint prefix="${prefix}" fingerprefix="${fingerprefix}" use_urdf_mimic="${use_urdf_mimic}"/>
   </xacro:macro>
 
-  <xacro:macro name="movable_finger_joint" params="prefix">
+  <xacro:macro name="movable_finger_joint" params="prefix use_urdf_mimic">
     <joint name="${prefix}finger_joint" type="revolute">
       <origin xyz="0 -0.017178 0.125797" rpy="0 0 0" />
       <parent link="${prefix}onrobot_rg2_base_link" />
@@ -39,27 +43,29 @@
       <axis xyz="-1 0 0" />
       <limit lower="-0.558505" upper="0.785398" velocity="100.0" effort="1000" />
     </joint>
-    <xacro:movable_finger_joints prefix="${prefix}" fingerprefix="left" reflect="1.0"/>
+    <xacro:movable_finger_joints prefix="${prefix}" fingerprefix="left" reflect="1.0" use_urdf_mimic="${use_urdf_mimic}"/>
   </xacro:macro>
 
-  <xacro:macro name="movable_right_outer_knuckle_joint" params="prefix">
+  <xacro:macro name="movable_right_outer_knuckle_joint" params="prefix use_urdf_mimic">
     <joint name="${prefix}right_outer_knuckle_joint" type="revolute">
       <origin xyz="0 0.017178 0.125797" rpy="0 0 ${pi}" />
       <parent link="${prefix}onrobot_rg2_base_link" />
       <child link="${prefix}right_outer_knuckle" />
       <axis xyz="1 0 0" />
       <limit lower="-0.785398" upper="0.785398" velocity="100.0" effort="1000" />
-      <mimic joint="${prefix}finger_joint" multiplier="-1" offset="0" />
+      <xacro:if value="${use_urdf_mimic}">
+        <mimic joint="${prefix}finger_joint" multiplier="-1" offset="0" />
+      </xacro:if>
     </joint>
-    <xacro:movable_finger_joints prefix="${prefix}" fingerprefix="right" reflect="-1.0"/>
+    <xacro:movable_finger_joints prefix="${prefix}" fingerprefix="right" reflect="-1.0" use_urdf_mimic="${use_urdf_mimic}"/>
   </xacro:macro>
 
-  <xacro:macro name="rg2_gripper" params="prefix:='' parent_link:='flange'">
+  <xacro:macro name="rg2_gripper" params="prefix:='' parent_link:='flange' use_urdf_mimic:='true'">
     <xacro:onrobot_rg2_base_link prefix="${prefix}"/>
     <xacro:finger_links prefix="${prefix}" fingerprefix="left"/>
     <xacro:finger_links prefix="${prefix}" fingerprefix="right"/>
-    <xacro:movable_finger_joint prefix="${prefix}"/>
-    <xacro:movable_right_outer_knuckle_joint prefix="${prefix}"/>
+    <xacro:movable_finger_joint prefix="${prefix}" use_urdf_mimic="${use_urdf_mimic}"/>
+    <xacro:movable_right_outer_knuckle_joint prefix="${prefix}" use_urdf_mimic="${use_urdf_mimic}"/>
 
     <joint name="${prefix}rg2_mount_joint" type="fixed">
       <parent link="${parent_link}"/>

@@ -28,7 +28,15 @@ class InitialControllerCommands(Node):
         arm = Float64MultiArray()
         arm.data = [0.0, 0.0, 1.5708, 0.0, 1.5708, 0.0]
         gripper = Float64MultiArray()
-        gripper.data = [0.10]
+        finger_position = 0.10
+        gripper.data = [
+            finger_position,
+            -finger_position,
+            finger_position,
+            -finger_position,
+            -finger_position,
+            finger_position,
+        ]
         end_time = time.monotonic() + 2.0
         while rclpy.ok() and time.monotonic() < end_time:
             self.arm_pub.publish(arm)

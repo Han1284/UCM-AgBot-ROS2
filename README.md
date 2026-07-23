@@ -2,7 +2,7 @@
 
 本仓库用于复现并继续开发 [mehradmrt/UCM-AgBot-ROS2](https://github.com/mehradmrt/UCM-AgBot-ROS2)。当前开发主线是 `leaf-manipulator` 相关工作，原始 UCM-AgBot 工程及 TM、RealSense、VectorNav、SLLidar、OnRobot 等组件作为源码依赖一起参与构建。
 
-当前环境以 Ubuntu 22.04、ROS 2 Humble、MoveIt 2 和 Gazebo Classic 11 为准。原始工程基于 Foxy，因此仓库中仍可能存在尚未迁移的旧入口；本文把已经核对过的 Humble 命令集中记录下来。
+当前环境以 Ubuntu 22.04、ROS 2 Humble、MoveIt 2 和 Gazebo Fortress 6 为准。原始工程基于 Foxy，leaf 操作主线已经迁移到现代 Gazebo；本文只给出已经核对过的 Humble + Fortress 主入口。
 
 ## 仓库结构
 
@@ -29,15 +29,15 @@ ros2_ws/
 - ROS 2 Humble
 - MoveIt 2 for Humble
 - Nav2 for Humble
-- Gazebo Classic 11
+- Gazebo Fortress 6
 
 首次使用时安装当前 leaf 仿真所需的 Humble 控制器：
 
 ```bash
 sudo apt update
 sudo apt install -y \
-  ros-humble-gazebo-plugins \
-  ros-humble-gazebo-ros2-control \
+  ros-humble-ros-gz \
+  ros-humble-gz-ros2-control \
   ros-humble-joint-state-broadcaster \
   ros-humble-position-controllers
 ```
@@ -84,18 +84,18 @@ source install/setup.bash
 
 ## Leaf 机械臂 Gazebo 仿真
 
-### 完整 Gazebo 控制仿真
+### 完整 Gazebo Fortress 控制仿真
 
-这是当前 Humble 主入口，会启动 Gazebo、TM5-900、RG2 夹爪、植物与叶片模型以及 ros2_control 控制器：
+这是当前唯一的 leaf 仿真主入口，会启动 Gazebo Fortress、TM5-900、RG2 夹爪、植物、MoveIt、RViz 以及 `gz_ros2_control` 控制器，但不会自动执行画圆：
 
 ```bash
-ros2 launch leaf_manipulation_sim gazebo.launch.py
+ros2 launch leaf_manipulation_sim simulation.launch.py gui:=true rviz:=true
 ```
 
 只启动服务端、不打开 Gazebo 窗口：
 
 ```bash
-ros2 launch leaf_manipulation_sim gazebo.launch.py gui:=false rviz:=false
+ros2 launch leaf_manipulation_sim simulation.launch.py gui:=false rviz:=false
 ```
 
 启动后可核对控制器状态：
@@ -112,90 +112,52 @@ ros2 topic pub --once /arm_position_controller/commands \
   std_msgs/msg/Float64MultiArray "{data: [0.0, 0.0, 1.2, 0.0, 1.2, 0.0]}"
 
 ros2 topic pub --once /gripper_position_controller/commands \
-  std_msgs/msg/Float64MultiArray "{data: [0.20]}"
-```
-
-### 固定机械臂显示与感知联调
-
-该入口使用静态关节状态，适合检查模型、相机、RViz 和感知话题，不代表 Gazebo 控制器已经接管关节：
-
-```bash
-ros2 launch leaf_manipulation_sim fixed_arm_gazebo.launch.py \
-  gui:=true rviz:=true software_gzclient:=false
-```
-
-当前默认会打开 Gazebo GUI，并优先使用硬件 OpenGL。若在低性能虚拟机中运行，可临时切回无界面或软件渲染：
-
-```bash
-ros2 launch leaf_manipulation_sim fixed_arm_gazebo.launch.py \
-  gui:=false rviz:=true
-
-ros2 launch leaf_manipulation_sim fixed_arm_gazebo.launch.py \
-  gui:=true rviz:=true software_gzclient:=true
-```
-
-将固定机械臂、RViz 和可选 MoveIt 组合启动：
-
-```bash
-ros2 launch leaf_manipulation_sim leaf_sim_bringup.launch.py \
-  gui:=true rviz:=true use_moveit:=true
-```
-
-### 模拟叶片位姿到抓取目标的完整演示
-
-以下入口会启动固定机械臂环境、模拟叶片位姿发布器、位姿适配器和抓取流程节点：
-
-```bash
-ros2 launch leaf_manipulation_sim leaf_manipulation_demo.launch.py \
-  gui:=true rviz:=true \
-  use_mock_poses:=true run_demo:=true
-```
-
-若接入真实感知节点，由真实节点发布 `/target_leaves_multi_pose`，关闭模拟位姿：
-
-```bash
-ros2 launch leaf_manipulation_sim leaf_manipulation_demo.launch.py \
-  gui:=true rviz:=true \
-  use_mock_poses:=false run_demo:=true
+  std_msgs/msg/Float64MultiArray \
+  "{data: [0.20, -0.20, 0.20, -0.20, -0.20, 0.20]}"
 ```
 
 ### 圆轨迹 Gazebo 与 MoveIt 联动演示
 
-一条命令启动 Gazebo GUI、MoveIt、RViz 并执行圆轨迹规划回放：
+leaf 仿真后端已从 Gazebo Classic 11 整体迁移到 Gazebo Fortress 6。机械臂由
+`ros_gz_sim` 生成，控制插件为 `gz_ros2_control`；RGB-D、点云和接触传感器经
+`ros_gz_bridge` 接入 ROS。四个叶片接触输出仍保持原来的
+`gazebo_msgs/msg/ContactsState` 类型和 `/plant/leaf_N_contacts` 名称。
+
+圆轨迹演示固定使用两个终端。终端一只启动 Gazebo、机械臂控制器、MoveIt、
+RViz、盆栽 Marker 和叶片接触传感器：
 
 ```bash
-ros2 launch leaf_manipulation_sim circle_demo.launch.py \
-  radius:=0.10 repetitions:=3 samples_per_circle:=60 \
-  velocity_scale:=0.2 acceleration_scale:=0.2 finger_position:=0.10
+ros2 launch leaf_manipulation_sim simulation.launch.py \
+  gui:=true rviz:=true
 ```
 
-推荐把仿真栈和演示节点拆成两个终端。终端一会同时启动 Gazebo GUI、RViz、MoveIt、控制器和安装在 `link_6` 前方的 RealSense D435 手眼相机。当前场景只保留 5 cm 厚的机械臂底板，不生成植物模型：
-
-```bash
-ros2 launch leaf_manipulation_sim circle_stack.launch.py \
-  rviz:=true
-```
-
-终端二：
+等待三个控制器均为 `active` 后，在终端二单独启动圆周节点：
 
 ```bash
 ros2 launch leaf_manipulation_sim run_circle_demo.launch.py \
   radius:=0.10 repetitions:=3 samples_per_circle:=60 \
-  finger_position:=0.10
+  velocity_scale:=0.2 acceleration_scale:=0.2 finger_position:=0.10
 ```
 
-在这一模式下，`circle_motion_demo` 把六轴位置和夹爪位置发送给 Gazebo 的位置控制器，`/joint_states` 只由 Gazebo 的 `joint_state_broadcaster` 发布，因此不会再与演示节点争夺 TF。演示结束后节点会持续发送最后一帧控制命令；查看完毕后按 `Ctrl+C` 结束。
+`simulation.launch.py` 不会自动执行圆周运动；`run_circle_demo.launch.py` 也不会
+启动第二份 Gazebo、MoveIt 或 RViz。不要同时运行 `fixed_arm_gazebo.launch.py`
+或单独启动内部的 `gazebo.launch.py`，否则会争用同一个 Fortress world。
+
+`circle_motion_demo` 会等待 `/arm_position_controller/commands` 和
+`/gripper_position_controller/commands` 出现订阅者，再发送六轴位置及夹爪位置。
+`/joint_states` 只由 Gazebo 的 `joint_state_broadcaster` 发布，因此不会与演示
+节点争夺 TF。演示结束后节点会持续发送最后一帧控制命令；查看完毕后按
+`Ctrl+C` 结束。
 
 圆轨迹演示使用简化碰撞几何。由于立柱与固定安装座的碰撞体存在重叠，画圆段关闭了碰撞拒绝，但仍执行 IK 与关节限位检查；该设置只适用于 Gazebo 演示，不应直接用于实机路径规划。
 
-`circle_stack.launch.py` 已经包含 `gazebo.launch.py`，不要再单独启动第二份 Gazebo。画圆演示现在只支持 Gazebo 控制器模式，不再保留旧的离线 `/joint_states` 回放路径。
-
 ### 指定位姿抓取演示
 
-先在终端一启动 Gazebo、MoveIt 和 RViz：
+先在终端一启动 Gazebo、MoveIt、控制器和 RViz：
 
 ```bash
-ros2 launch leaf_manipulation_sim circle_stack.launch.py gui:=true rviz:=true
+ros2 launch leaf_manipulation_sim simulation.launch.py \
+  gui:=true rviz:=true
 ```
 
 终端二使用明确的目标位姿运行抓取轨迹演示：
@@ -297,26 +259,27 @@ ros2 launch ui_for_debug_and_demo tm_gui.launch.py robot_ip:=192.168.1.19
 
 ### Gazebo 中能生成实体但看不到机械臂
 
-TM5 和 RG2 的网格使用 `package://tm_description/...` 与 `package://onrobot_rg_description/...`。Humble 的 Gazebo Classic 在生成 SDF 后会按 `model://` 查找这些资源，因此必须让 `GAZEBO_MODEL_PATH` 包含两个安装包的 `share` 父目录。当前 `gazebo.launch.py` 和 `fixed_arm_gazebo.launch.py` 已自动配置这些路径；修改后必须重新构建并重新加载工作区：
+TM5 和 RG2 的网格使用 `package://tm_description/...` 与 `package://onrobot_rg_description/...`。Gazebo Fortress 需要通过 `GZ_SIM_RESOURCE_PATH` 或兼容变量 `IGN_GAZEBO_RESOURCE_PATH` 找到这些资源。内部的 `gazebo.launch.py` 已自动加入相关安装包的 `share` 父目录；修改后必须重新构建并重新加载工作区：
 
 ```bash
 colcon build --packages-select leaf_manipulation_sim
 source install/setup.bash
-ros2 launch leaf_manipulation_sim gazebo.launch.py
+ros2 launch leaf_manipulation_sim simulation.launch.py gui:=true rviz:=true
 ```
 
-如果仍不可见，检查客户端日志中是否还有 `No mesh specified`：
+如果仍不可见，直接检查当前启动日志中的资源错误：
 
 ```bash
-rg -n "No mesh specified|Unable to find uri" ~/.gazebo/client-*/default.log
+rg -n "No mesh specified|Unable to find uri|Unable to find file" \
+  ~/.ros/log/latest/* 2>/dev/null
 ```
 
 ### 没有 `/camera` 图像话题
 
-Gazebo 深度相机依赖 `libgazebo_ros_camera.so`，该库由 Humble 的 `gazebo_plugins` 包提供。若日志出现 `Failed to load plugin libgazebo_ros_camera.so`，安装依赖后重新启动整个 Gazebo：
+Fortress 使用原生 RGB-D 传感器，并由 `ros_gz_bridge` 转换成 ROS 图像、深度图和点云。若话题缺失，先确认迁移依赖存在，再重新启动整个仿真：
 
 ```bash
-sudo apt install -y ros-humble-gazebo-plugins
+sudo apt install -y ros-humble-ros-gz ros-humble-gz-ros2-control
 ```
 
 启动仿真后可检查图像、深度图和点云：
@@ -328,7 +291,7 @@ ros2 topic hz /camera/depth/image_raw
 ros2 topic hz /camera/depth/color/points
 ```
 
-`leaf_manipulation.rviz` 已配置 `RGB Image` 与 `Depth Image` 两个独立显示面板，分别订阅 `/camera/color/image_raw` 和 `/camera/depth/image_raw`，两者使用 `Best Effort` QoS 以匹配 Gazebo 相机。
+`leaf_manipulation.rviz` 保留主 Displays 面板，不再启动名为 Camera 的额外面板；植物继续由 `/plant_marker` 显示。需要检查相机时，可临时添加 Image 显示并选择上述话题。
 
 ### 子模块提示 `not our ref`
 

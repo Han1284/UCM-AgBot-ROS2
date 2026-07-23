@@ -6,7 +6,7 @@
   <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro"/>
   <xacro:include filename="$(find leaf_manipulation_sim)/urdf/parts/fixed_mount.xacro"/>
   <xacro:include filename="$(find leaf_manipulation_sim)/urdf/parts/rg2_mount.xacro"/>
-  <xacro:include filename="$(find leaf_manipulation_sim)/urdf/parts/gazebo_plugins.xacro"/>
+  <xacro:include filename="$(find leaf_manipulation_sim)/urdf/parts/gz_plugins.xacro"/>
   <xacro:include filename="$(find leaf_manipulation_sim)/urdf/parts/gazebo_collision_safe.xacro"/>
 
   <link name="world"/>
@@ -30,7 +30,7 @@
             rpy="${arm_mount_roll} ${arm_mount_pitch} ${arm_mount_yaw}"/>
   </joint>
 
-  <xacro:rg2_gripper prefix="" parent_link="flange"/>
+  <xacro:rg2_gripper prefix="" parent_link="flange" use_urdf_mimic="false"/>
 
   <!-- Native TMvision optical pose from the official modified TM5-900 model. -->
   <link name="tmvision_camera_frame"/>
@@ -60,10 +60,9 @@
   </gazebo>
   <xacro:tm5_gazebo_safe prefix=""/>
   <xacro:rg2_gazebo_safe prefix=""/>
-  <xacro:rg2_mimic_plugins prefix=""/>
-  <ros2_control name="GazeboSystem" type="system">
+  <ros2_control name="GazeboSimSystem" type="system">
     <hardware>
-      <plugin>gazebo_ros2_control/GazeboSystem</plugin>
+      <plugin>gz_ros2_control/GazeboSimSystem</plugin>
     </hardware>
     <joint name="joint_1"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
     <joint name="joint_2"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
@@ -72,10 +71,15 @@
     <joint name="joint_5"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
     <joint name="joint_6"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
     <joint name="finger_joint"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+    <joint name="left_inner_knuckle_joint"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+    <joint name="left_inner_finger_joint"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+    <joint name="right_outer_knuckle_joint"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+    <joint name="right_inner_knuckle_joint"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+    <joint name="right_inner_finger_joint"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
   </ros2_control>
-  <xacro:gazebo_ros2_control_plugin/>
+  <xacro:gz_ros2_control_plugin/>
   <!-- Gazebo reduces camera_link into this preserved mounting frame. -->
-  <xacro:d435_depth_camera parent_link="camera_bottom_screw_frame"/>
+  <xacro:d435_gz_rgbd_camera parent_link="camera_bottom_screw_frame"/>
 
   <gazebo reference="link_1"><selfCollide>true</selfCollide></gazebo>
   <gazebo reference="link_2"><selfCollide>true</selfCollide></gazebo>

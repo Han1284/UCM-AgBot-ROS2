@@ -51,6 +51,7 @@ install(DIRECTORY
   config
   worlds
   models
+  meshes
   rviz
   DESTINATION share/${PROJECT_NAME}
 )
@@ -94,6 +95,12 @@ install(PROGRAMS
   leaf_manipulation_sim/plant_marker_publisher.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME plant_marker_publisher
+)
+
+install(PROGRAMS
+  leaf_manipulation_sim/contact_bridge_adapter.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME contact_bridge_adapter
 )
 
 install(PROGRAMS

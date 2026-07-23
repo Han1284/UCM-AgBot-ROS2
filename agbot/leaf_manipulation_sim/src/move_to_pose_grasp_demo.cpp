@@ -288,7 +288,14 @@ private:
     std_msgs::msg::Float64MultiArray arm_command;
     arm_command.data.assign(positions.begin(), positions.begin() + 6);
     std_msgs::msg::Float64MultiArray gripper_command;
-    gripper_command.data = {positions.back()};
+    const double finger_position = positions.back();
+    gripper_command.data = {
+      finger_position,
+      -finger_position,
+      finger_position,
+      -finger_position,
+      -finger_position,
+      finger_position};
     arm_command_pub_->publish(arm_command);
     gripper_command_pub_->publish(gripper_command);
     publishPathPoint(positions);

@@ -29,11 +29,6 @@ constexpr double kDefaultFingerPosition = 0.10;
 constexpr int kDefaultRepetitions = 3;
 constexpr int kDefaultSamplesPerCircle = 60;
 
-std::vector<double> makeZeroPositions(std::size_t size)
-{
-  return std::vector<double>(size, 0.0);
-}
-
 geometry_msgs::msg::Pose eigenToPose(const Eigen::Isometry3d& transform)
 {
   geometry_msgs::msg::Pose pose;
@@ -96,8 +91,6 @@ public:
     if (!waitForGazeboControllers(15s)) {
       return false;
     }
-    publishStableJointState(arm_joints, makeZeroPositions(arm_joints.size()), 2s);
-
     moveit::planning_interface::MoveGroupInterface move_group(node_, "tmr_arm");
     move_group.setPoseReferenceFrame("base");
     move_group.setEndEffectorLink("gripper");
@@ -346,7 +339,13 @@ private:
     }
 
     std_msgs::msg::Float64MultiArray gripper_command;
-    gripper_command.data = {finger_position_};
+    gripper_command.data = {
+      finger_position_,
+      -finger_position_,
+      finger_position_,
+      -finger_position_,
+      -finger_position_,
+      finger_position_};
     arm_command_pub_->publish(arm_command);
     gripper_command_pub_->publish(gripper_command);
   }

@@ -1,6 +1,23 @@
 <?xml version="1.0" ?>
-<sdf version="1.6">
+<sdf version="1.8">
   <world name="leaf_bench">
+    <plugin filename="ignition-gazebo-physics-system"
+            name="gz::sim::systems::Physics"/>
+    <plugin filename="ignition-gazebo-user-commands-system"
+            name="gz::sim::systems::UserCommands"/>
+    <plugin filename="ignition-gazebo-scene-broadcaster-system"
+            name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="ignition-gazebo-sensors-system"
+            name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="ignition-gazebo-contact-system"
+            name="gz::sim::systems::Contact"/>
+
+    <physics name="default_physics" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
     <gravity>0 0 -9.81</gravity>
     <magnetic_field>0 0 0</magnetic_field>
     <scene>
@@ -9,19 +26,24 @@
       <shadows>true</shadows>
     </scene>
 
-    <gui fullscreen="0">
-      <camera name="leaf_bench_camera">
-        <pose>2.8 -2.8 2.2 0 0.35 2.35</pose>
-        <view_controller>orbit</view_controller>
-      </camera>
-    </gui>
-
-    <include>
-      <uri>model://sun</uri>
-    </include>
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.2 -0.9</direction>
+    </light>
 
     <include>
       <uri>model://calibration_floor</uri>
+    </include>
+
+    <!-- The controllable ros2_control stack uses this world. Keep the same
+         rigid, contact-instrumented plant pose as fixed_arm_empty.world. -->
+    <include>
+      <uri>model://simple_potted_plant</uri>
+      <name>plant_in_front_of_arm</name>
+      <pose>0.85 0.00 0 0 0 0</pose>
     </include>
 
   </world>
