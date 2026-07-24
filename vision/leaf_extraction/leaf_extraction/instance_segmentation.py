@@ -23,12 +23,29 @@ from sklearn.cluster import DBSCAN, OPTICS
 from sklearn.decomposition import PCA
 import pandas as pd
 import os
+from ament_index_python.packages import get_package_share_directory
 
 class ImageProcessor(Node):
     def __init__(self):
         super().__init__('instance_segmentation')
+        default_model = os.path.join(
+            get_package_share_directory('leaf_extraction'),
+            'segmentation_model',
+            'citrus.pt')
+        self.declare_parameter(
+            'point_cloud_topic',
+            '/perception_test_camera/depth/color/points')
+        self.declare_parameter('model_path', default_model)
+        self.declare_parameter('confidence', 0.25)
+        point_cloud_topic = (
+            self.get_parameter('point_cloud_topic')
+            .get_parameter_value().string_value)
+        model_path = (
+            self.get_parameter('model_path')
+            .get_parameter_value().string_value)
+
         self.point_cloud_subscription = self.create_subscription(
-            PointCloud2, '/camera/depth/color/points', self.point_cloud_callback, 10)
+            PointCloud2, point_cloud_topic, self.point_cloud_callback, 10)
 
         self.pose_array_publisher = self.create_publisher(PoseArray,'/target_leaves',
                                         QoSProfile(depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL))
@@ -37,11 +54,16 @@ class ImageProcessor(Node):
                                 QoSProfile(depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL))
 
         self.bridge = CvBridge()
-        # self.model = YOLO('src/vision/leaf_extraction/segmentation_model/magnolia_best_yolov8x_seg.pt')
-        self.model = YOLO('src/vision/leaf_extraction/segmentation_model/final-pistachio-yolov8x-seg.pt')
-        # self.model = YOLO('src/vision/leaf_extraction/segmentation_model/citrus.pt')
+        if not os.path.isfile(model_path):
+            raise FileNotFoundError(
+                f'Leaf segmentation model does not exist: {model_path}')
+        self.model = YOLO(model_path)
         
-        self.conf_cutoff = 0.5
+        self.conf_cutoff = (
+            self.get_parameter('confidence').get_parameter_value().double_value)
+        self.get_logger().info(
+            f'Using model={model_path}, point_cloud_topic={point_cloud_topic}, '
+            f'confidence={self.conf_cutoff:.3f}')
         self.rgb_masked = None
 
         self.colors = None

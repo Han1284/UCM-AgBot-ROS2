@@ -349,6 +349,88 @@ ros2 topic hz /camera/depth/color/points
 
 `leaf_manipulation.rviz` 保留主 Displays 面板，不再启动名为 Camera 的额外面板；植物继续由 `/plant_marker` 显示。需要检查相机时，可临时添加 Image 显示并选择上述话题。
 
+### 独立感知测试相机与叶片分割
+
+独立测试相机直接固定在 Gazebo 世界中，不随机械臂运动，也不会覆盖手腕 D435 的
+`/camera/*` 话题。先构建仿真包和感知包：
+
+```bash
+cd /home/han1284/projects/ros2_ws
+source /opt/ros/humble/setup.bash
+colcon build --packages-select leaf_manipulation_sim leaf_extraction
+source install/setup.bash
+```
+
+在终端一启动原有仿真：
+
+```bash
+cd /home/han1284/projects/ros2_ws
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+ros2 launch leaf_manipulation_sim simulation.launch.py gui:=true rviz:=true
+```
+
+在终端二生成独立俯视 RGB-D 相机。默认位置为
+`x=0.85, y=0.0, z=1.35`，可通过启动参数单独调整位置和欧拉角，不需要移动机械臂或求解 IK：
+
+```bash
+cd /home/han1284/projects/ros2_ws
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+ros2 launch leaf_manipulation_sim perception_test_camera.launch.py
+```
+
+相机发布以下 ROS 2 话题：
+
+```text
+/perception_test_camera/color/image_raw
+/perception_test_camera/color/camera_info
+/perception_test_camera/depth/image_raw
+/perception_test_camera/depth/camera_info
+/perception_test_camera/depth/color/points
+```
+
+在终端三进入已安装 PyTorch 和 Ultralytics 的虚拟环境，启动仅负责验证分割的节点：
+
+```bash
+cd /home/han1284/projects/ros2_ws
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+source .venv-romu4o/bin/activate
+python -m leaf_extraction.segmentation_preview --ros-args \
+  -p confidence:=0.25
+```
+
+该节点从有组织点云中读取与深度逐像素对齐的 RGB，不在这一阶段发布叶片抓取位姿。它默认加载包内的
+`citrus.pt`，并发布叠加图、合并掩膜和 JSON 状态：
+
+```text
+/leaf_segmentation/overlay
+/leaf_segmentation/combined_mask
+/leaf_segmentation/status
+```
+
+可用下面的命令检查在线结果，在 RViz 中则添加 `Image` Display 并选择
+`/leaf_segmentation/overlay`：
+
+```bash
+ros2 topic echo /leaf_segmentation/status
+ros2 topic hz /leaf_segmentation/overlay
+```
+
+如需试验新的权重，应明确传入绝对路径，而不再修改 Python 源码中的硬编码文件名：
+
+```bash
+python -m leaf_extraction.segmentation_preview --ros-args \
+  -p model_path:=/absolute/path/to/best.pt \
+  -p confidence:=0.25
+```
+
+旧的 `instance_segmentation` 节点也已经采用相同的 `model_path`、
+`point_cloud_topic` 和 `confidence` 参数。它后续还需要完成独立相机光学坐标系到机器人基座坐标系的
+TF 转换，因此在坐标链修正前只使用上述预览节点验证二维分割，不要把其旧版硬编码的 `gripper`
+坐标结果直接交给 MoveIt。
+
 ### 子模块提示 `not our ref`
 
 这通常说明父仓库固定到了远端已经无法取得的提交。不要反复执行同一条 `git submodule update`；应先核对 `.gitmodules` URL 和父仓库记录的 gitlink，再切换到远端实际存在、与 Humble 兼容的提交。

@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<sdf version="1.8">
+  <model name="perception_test_camera">
+    <static>true</static>
+    <link name="camera_link">
+      <visual name="camera_body">
+        <pose>-0.035 0 0 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.070 0.090 0.030</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0.08 0.10 0.12 1</ambient>
+          <diffuse>0.12 0.15 0.18 1</diffuse>
+          <specular>0.25 0.25 0.25 1</specular>
+        </material>
+      </visual>
+
+      <!-- Gazebo camera sensors look along their local +X axis. The model
+           pose is supplied by perception_test_camera.launch.py, so the
+           default pitch=+pi/2 points +X toward world -Z. -->
+      <sensor name="rgbd_sensor" type="rgbd_camera">
+        <pose>0 0 0 0 0 0</pose>
+        <always_on>true</always_on>
+        <update_rate>10.0</update_rate>
+        <visualize>false</visualize>
+        <topic>/perception_test_camera_gz</topic>
+        <camera>
+          <horizontal_fov>1.047</horizontal_fov>
+          <image>
+            <width>640</width>
+            <height>480</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>0.1</near>
+            <far>3.0</far>
+          </clip>
+        </camera>
+      </sensor>
+    </link>
+  </model>
+</sdf>

@@ -1,0 +1,72 @@
+<?xml version="1.0"?>
+<sdf version="1.8">
+  <model name="perception_label_plant">
+    <static>true</static>
+    <link name="label_link">
+      <visual name="leaf_1_label">
+        <pose>0 0 0.0001 1.57079632679 0 0</pose>
+        <cast_shadows>false</cast_shadows>
+        <geometry>
+          <mesh>
+            <uri>model://perception_label_plant/meshes/leaf_1.obj</uri>
+            <scale>0.10 0.10 0.10</scale>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>1.0 0.0 1.0 1</ambient>
+          <diffuse>1.0 0.0 1.0 1</diffuse>
+          <emissive>1.0 0.0 1.0 1</emissive>
+          <specular>0 0 0 1</specular>
+        </material>
+      </visual>
+      <visual name="leaf_2_label">
+        <pose>0 0 0.0001 1.57079632679 0 0</pose>
+        <cast_shadows>false</cast_shadows>
+        <geometry>
+          <mesh>
+            <uri>model://perception_label_plant/meshes/leaf_2.obj</uri>
+            <scale>0.10 0.10 0.10</scale>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.0 1.0 1.0 1</ambient>
+          <diffuse>0.0 1.0 1.0 1</diffuse>
+          <emissive>0.0 1.0 1.0 1</emissive>
+          <specular>0 0 0 1</specular>
+        </material>
+      </visual>
+      <visual name="leaf_3_label">
+        <pose>0 0 0.0001 1.57079632679 0 0</pose>
+        <cast_shadows>false</cast_shadows>
+        <geometry>
+          <mesh>
+            <uri>model://perception_label_plant/meshes/leaf_3.obj</uri>
+            <scale>0.10 0.10 0.10</scale>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>1.0 1.0 0.0 1</ambient>
+          <diffuse>1.0 1.0 0.0 1</diffuse>
+          <emissive>1.0 1.0 0.0 1</emissive>
+          <specular>0 0 0 1</specular>
+        </material>
+      </visual>
+      <visual name="leaf_4_label">
+        <pose>0 0 0.0001 1.57079632679 0 0</pose>
+        <cast_shadows>false</cast_shadows>
+        <geometry>
+          <mesh>
+            <uri>model://perception_label_plant/meshes/leaf_4.obj</uri>
+            <scale>0.10 0.10 0.10</scale>
+          </mesh>
+        </geometry>
+        <material>
+          <ambient>0.15 0.45 1.0 1</ambient>
+          <diffuse>0.15 0.45 1.0 1</diffuse>
+          <emissive>0.15 0.45 1.0 1</emissive>
+          <specular>0 0 0 1</specular>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>
