@@ -111,7 +111,7 @@ def generate_launch_description():
             ('/camera_gz/image', '/camera/color/image_raw'),
             ('/camera_gz/camera_info', '/camera/color/camera_info'),
             ('/camera_gz/depth_image', '/camera/depth/image_raw'),
-            ('/camera_gz/points', '/camera/depth/color/points'),
+            ('/camera_gz/points', '/camera/depth/color/points_gz'),
         ],
     )
 
@@ -146,6 +146,12 @@ def generate_launch_description():
         Node(
             package='leaf_manipulation_sim',
             executable='contact_bridge_adapter',
+            output='screen',
+            parameters=[{'use_sim_time': use_sim_time}],
+        ),
+        Node(
+            package='leaf_manipulation_sim',
+            executable='point_cloud_optical_adapter',
             output='screen',
             parameters=[{'use_sim_time': use_sim_time}],
         ),

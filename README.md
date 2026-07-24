@@ -1,10 +1,26 @@
 # RoMu4o / AgBot ROS 2 工作区
 
+## 目录
+
+1. [仓库结构](#1-仓库结构)
+2. [环境与依赖](#2-环境与依赖)
+3. [获取源码和构建](#3-获取源码和构建)
+4. [Leaf 机械臂 Gazebo 仿真](#4-leaf-机械臂-gazebo-仿真)
+   1. [完整 Gazebo Fortress 控制仿真](#41-完整-gazebo-fortress-控制仿真)
+   2. [圆轨迹 Gazebo 与 MoveIt 联动演示](#42-圆轨迹-gazebo-与-moveit-联动演示)
+   3. [指定位姿抓取演示](#43-指定位姿抓取演示)
+   4. [已标定叶片轻夹演示](#44-已标定叶片轻夹演示)
+   5. [MoveIt Task Constructor 候选解与评分](#45-moveit-task-constructor-候选解与评分)
+5. [整机、传感器与导航入口](#5-整机传感器与导航入口)
+6. [TM5-900 实机和驱动 demo](#6-tm5-900-实机和驱动-demo)
+7. [常见问题](#7-常见问题)
+8. [参考文献](#8-参考文献)
+
 本仓库用于复现并继续开发 [mehradmrt/UCM-AgBot-ROS2](https://github.com/mehradmrt/UCM-AgBot-ROS2)。当前开发主线是 `leaf-manipulator` 相关工作，原始 UCM-AgBot 工程及 TM、RealSense、VectorNav、SLLidar、OnRobot 等组件作为源码依赖一起参与构建。
 
 当前环境以 Ubuntu 22.04、ROS 2 Humble、MoveIt 2 和 Gazebo Fortress 6 为准。原始工程基于 Foxy，leaf 操作主线已经迁移到现代 Gazebo；本文只给出已经核对过的 Humble + Fortress 主入口。
 
-## 仓库结构
+## 1. 仓库结构
 
 ```text
 ros2_ws/
@@ -21,7 +37,7 @@ ros2_ws/
 └── log/                         # colcon 日志
 ```
 
-## 环境与依赖
+## 2. 环境与依赖
 
 推荐环境如下：
 
@@ -56,7 +72,7 @@ rosdep install --from-paths src --ignore-src --rosdistro humble -r -y \
 
 `robot_server_msgs` 只被 TM 调试 GUI 的旧清单引用，目前没有 Humble rosdep 规则，不影响 leaf 仿真和机械臂控制链。`rosdep` 同时服务于 ROS 1 和 ROS 2；它不是 ROS 1 专用命令，实际解析哪个发行版由当前环境和 `--rosdistro humble` 决定。
 
-## 获取源码和构建
+## 3. 获取源码和构建
 
 克隆主工作区时应递归取得所有子模块：
 
@@ -84,9 +100,9 @@ source /opt/ros/humble/setup.bash
 source install/setup.bash
 ```
 
-## Leaf 机械臂 Gazebo 仿真
+## 4. Leaf 机械臂 Gazebo 仿真
 
-### 完整 Gazebo Fortress 控制仿真
+### 4.1 完整 Gazebo Fortress 控制仿真
 
 这是当前唯一的 leaf 仿真主入口，会启动 Gazebo Fortress、TM5-900、RG2 夹爪、植物、MoveIt、RViz 以及 `gz_ros2_control` 控制器，但不会自动执行画圆：
 
@@ -118,7 +134,7 @@ ros2 topic pub --once /gripper_position_controller/commands \
   "{data: [0.20, -0.20, 0.20, -0.20, -0.20, 0.20]}"
 ```
 
-### 圆轨迹 Gazebo 与 MoveIt 联动演示
+### 4.2 圆轨迹 Gazebo 与 MoveIt 联动演示
 
 leaf 仿真后端已从 Gazebo Classic 11 整体迁移到 Gazebo Fortress 6。机械臂由
 `ros_gz_sim` 生成，控制插件为 `gz_ros2_control`；RGB-D、点云和接触传感器经
@@ -153,7 +169,7 @@ ros2 launch leaf_manipulation_sim run_circle_demo.launch.py \
 
 圆轨迹演示使用简化碰撞几何。由于立柱与固定安装座的碰撞体存在重叠，画圆段关闭了碰撞拒绝，但仍执行 IK 与关节限位检查；该设置只适用于 Gazebo 演示，不应直接用于实机路径规划。
 
-### 指定位姿抓取演示
+### 4.3 指定位姿抓取演示
 
 先在终端一启动 Gazebo、MoveIt、控制器和 RViz：
 
@@ -177,7 +193,7 @@ ros2 launch leaf_manipulation_sim run_pose_grasp_demo.launch.py \
 ros2 run leaf_manipulation_sim prompt_pose_grasp_demo
 ```
 
-### 已标定叶片轻夹演示
+### 4.4 已标定叶片轻夹演示
 
 这个入口使用第 1 片叶子的外侧第 5 段碰撞盒作为目标。夹爪闭合轴与叶面法向
 对齐，运动过程中保持 `link_6`、夹爪基座和 D435 不接触叶片。它只执行动作，
@@ -199,7 +215,7 @@ ros2 launch leaf_manipulation_sim run_leaf_pinch_demo.launch.py
 演示会依次张开夹爪、移动到已标定叶尖位姿、闭合一次、重新张开并返回
 竖直 `home`，完成后自动退出。可通过 `grasp_hold_sec:=3.0` 调整闭合保持时间。
 
-### MoveIt Task Constructor 候选解与评分
+### 4.5 MoveIt Task Constructor 候选解与评分
 
 RViz 配置中已经加入 MoveIt 2 官方 MTC 的 `Motion Planning Tasks` 面板。
 仿真启动时会读取 Gazebo 使用的 `simple_potted_plant/model.sdf`，将花盆和
@@ -208,10 +224,11 @@ PlanningScene，因此这些场景初始化操作不会占用 MTC 主任务树�
 
 完整任务依次规划：张开夹爪、无碰撞接近叶片、闭合夹爪、重新张开夹爪、
 返回竖直 `home`。只有目标位姿需要 IK；夹爪开合和返回 `home` 是明确的
-关节空间目标，也会各自产生可预览轨迹。叶片保持为正常碰撞对象，不再
-通过允许碰撞来让夹爪穿过薄盒。夹持目标位姿位于叶片厚度中心，闭合角
-保留两侧各约 1 mm 间隙，用于模拟接触但不继续挤压叶片。这个入口只规划
-和发布预览，不会自动驱动 Gazebo 中的机械臂。
+关节空间目标，也会各自产生可预览轨迹。任务只临时允许两个内侧指尖接触
+所选叶片的薄盒，机械臂和指节仍须通过正常碰撞检查；夹爪张开并回到
+`home` 后再恢复该叶片的完整碰撞检查。夹持目标位姿位于叶片厚度中心，
+闭合角保留两侧各约 1 mm 间隙，用于模拟接触但不继续挤压叶片。这个入口
+只规划和发布预览，不会自动驱动 Gazebo 中的机械臂。
 
 仍然在终端一单独启动仿真：
 
@@ -231,7 +248,7 @@ ros2 launch leaf_manipulation_sim run_leaf_mtc_demo.launch.py
 `move_group` 禁止轨迹执行，因此该面板只用于比较和预览；确认候选位姿后，
 使用 `run_leaf_pinch_demo.launch.py` 执行已经验证过的轻夹动作。
 
-## 整机、传感器与导航入口
+## 5. 整机、传感器与导航入口
 
 启动传感器，可按需关闭不使用的设备：
 
@@ -255,13 +272,52 @@ ros2 launch robot_bringup slam.launch.py
 ros2 launch robot_bringup sensors_arm.launch.py
 ```
 
-运行叶片实例分割：
+日常抓叶使用手腕 D435，不使用独立训练相机。仿真已经把 Gazebo 的
+X-forward 点云转换成 REP-103 的 Z-forward 光学点云，并由 tf2 按采样时间将
+叶片中心和姿态转换到 `world`；不要再添加旧版手写的相机到夹爪偏移。
+
+终端一启动仿真和 RViz：
 
 ```bash
-ros2 run leaf_extraction instance_segmentation
+cd /home/han1284/projects/ros2_ws
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+ros2 launch leaf_manipulation_sim simulation.launch.py gui:=true rviz:=true
 ```
 
-## TM5-900 实机和驱动 demo
+终端二进入感知虚拟环境并启动交互式抓叶感知管线：
+
+```bash
+cd /home/han1284/projects/ros2_ws
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+source .venv-romu4o/bin/activate
+ros2 run leaf_manipulation_sim leaf_perception_pipeline
+```
+
+该入口先通过 MoveIt 规划到无碰撞的 D435 俯视观察姿态，再从
+`/camera/depth/color/points` 分割叶片。终端会输出检测数量、每片叶子的
+`world` 坐标和置信度。RViz 会用同一编号显示每片叶子的中心和法向箭头；
+输入编号后，所选标记会变色并发布单片目标。随后 MoveIt Task Constructor
+规划“接近叶片、闭合到两侧各约 1 mm 间隙、张开夹爪、返回竖直
+`home`”的完整任务。Motion Planning Tasks 面板会显示带 cost 的候选解，
+点击 cost 行即可预览整段动作。该步骤只规划和可视化，不会自动驱动
+Gazebo 中的机械臂执行动作。
+
+可用以下命令核查坐标链和选中目标：
+
+```bash
+ros2 topic echo /camera/depth/color/points --once --field header
+ros2 run tf2_ros tf2_echo world camera_depth_optical_frame
+ros2 topic echo /target_leaves_multi_pose --once --field header
+ros2 topic echo /leaf_perception/markers --once
+```
+
+三处 `frame_id` 应分别落在 TF 树内，最终目标应为 `world`。原始 Fortress
+点云仅作为内部输入保留在 `/camera/depth/color/points_gz`，不应直接交给
+感知节点。
+
+## 6. TM5-900 实机和驱动 demo
 
 以下命令面向真实 TM 机械臂，不应与纯 Gazebo 演示混为一谈。先在终端一启动驱动，将 IP 地址替换为 TMflow 中配置的机器人地址：
 
@@ -311,9 +367,9 @@ ros2 launch ui_for_debug_and_demo tm_gui.launch.py robot_ip:=192.168.1.19
 
 该 GUI 仍声明了未纳入当前源码树的 `robot_server_msgs`，如果运行时报缺包，应先补入对应消息包；这不影响 Gazebo leaf 主线。
 
-## 常见问题
+## 7. 常见问题
 
-### Gazebo 中能生成实体但看不到机械臂
+### 7.1 Gazebo 中能生成实体但看不到机械臂
 
 TM5 和 RG2 的网格使用 `package://tm_description/...` 与 `package://onrobot_rg_description/...`。Gazebo Fortress 需要通过 `GZ_SIM_RESOURCE_PATH` 或兼容变量 `IGN_GAZEBO_RESOURCE_PATH` 找到这些资源。内部的 `gazebo.launch.py` 已自动加入相关安装包的 `share` 父目录；修改后必须重新构建并重新加载工作区：
 
@@ -330,7 +386,7 @@ rg -n "No mesh specified|Unable to find uri|Unable to find file" \
   ~/.ros/log/latest/* 2>/dev/null
 ```
 
-### 没有 `/camera` 图像话题
+### 7.2 没有 `/camera` 图像话题
 
 Fortress 使用原生 RGB-D 传感器，并由 `ros_gz_bridge` 转换成 ROS 图像、深度图和点云。若话题缺失，先确认迁移依赖存在，再重新启动整个仿真：
 
@@ -349,10 +405,11 @@ ros2 topic hz /camera/depth/color/points
 
 `leaf_manipulation.rviz` 保留主 Displays 面板，不再启动名为 Camera 的额外面板；植物继续由 `/plant_marker` 显示。需要检查相机时，可临时添加 Image 显示并选择上述话题。
 
-### 独立感知测试相机与叶片分割
+### 7.3 独立训练相机与叶片分割
 
-独立测试相机直接固定在 Gazebo 世界中，不随机械臂运动，也不会覆盖手腕 D435 的
-`/camera/*` 话题。先构建仿真包和感知包：
+独立测试相机只用于采集训练数据和离线观察，不用于真实抓叶坐标。它直接固定在
+植物正上方 `x=0.85, y=0.0, z=1.35` 并垂直向下拍摄，不随机械臂运动，也不会
+覆盖手腕 D435 的 `/camera/*` 话题。先构建仿真包和感知包：
 
 ```bash
 cd /home/han1284/projects/ros2_ws
@@ -401,8 +458,8 @@ python -m leaf_extraction.segmentation_preview --ros-args \
   -p confidence:=0.25
 ```
 
-该节点从有组织点云中读取与深度逐像素对齐的 RGB，不在这一阶段发布叶片抓取位姿。它默认加载包内的
-`citrus.pt`，并发布叠加图、合并掩膜和 JSON 状态：
+该节点从有组织点云中读取与深度逐像素对齐的 RGB，不在这一阶段发布叶片抓取位姿。仿真默认加载包内
+针对当前低面植物微调的 `leaf_sim_best.pt`，并发布叠加图、合并掩膜和 JSON 状态：
 
 ```text
 /leaf_segmentation/overlay
@@ -426,20 +483,60 @@ python -m leaf_extraction.segmentation_preview --ros-args \
   -p confidence:=0.25
 ```
 
-旧的 `instance_segmentation` 节点也已经采用相同的 `model_path`、
-`point_cloud_topic` 和 `confidence` 参数。它后续还需要完成独立相机光学坐标系到机器人基座坐标系的
-TF 转换，因此在坐标链修正前只使用上述预览节点验证二维分割，不要把其旧版硬编码的 `gripper`
-坐标结果直接交给 MoveIt。
+`instance_segmentation` 的默认输入已经恢复为手腕 D435 的
+`/camera/depth/color/points`，输出 frame 为 `world`，并移除了旧版硬编码的
+`gripper` 偏移。独立相机预览仍使用 `segmentation_preview` 和
+`/perception_test_camera/*`，两条用途不同的话题不要互换。
 
-### 子模块提示 `not our ref`
+#### 7.3.1 重新生成仿真数据并微调
+
+训练标签来自原始 OBJ 中四个独立的叶片连通网格，不使用低置信度模型预测作为伪标签。采集时正常植物和
+隐藏的彩色标签植物交替出现在同一位姿，质量门槛要求每张图必须提取到四个叶片实例。终端一仍运行主仿真，
+终端二用训练开关启动独立相机：
+
+```bash
+ros2 launch leaf_manipulation_sim perception_test_camera.launch.py \
+  training_labels:=true
+```
+
+在终端三生成可断点续采的数据集：
+
+```bash
+cd /home/han1284/projects/ros2_ws
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+ros2 run leaf_extraction collect_sim_dataset \
+  --output "$PWD/romu4o_artifacts/perception_training/leaf_sim_120" \
+  --samples 120 --seed 20260724
+```
+
+采集完成后关闭 Gazebo 释放显存，再进入 PyTorch 虚拟环境执行保守微调。该配置冻结骨干网络，使用
+`0.0001` 学习率并关闭 Mosaic，避免小数据集把已有权重冲坏：
+
+```bash
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+source .venv-romu4o/bin/activate
+python -m leaf_extraction.train_sim_model \
+  --data "$PWD/romu4o_artifacts/perception_training/leaf_sim_120/data.yaml" \
+  --project "$PWD/romu4o_artifacts/perception_training/runs" \
+  --name leaf_sim_fine_tune --epochs 60
+```
+
+当前 96 张训练图和 24 张验证图的实测结果中，原始 `citrus.pt` 的掩膜召回率为
+`0.718`、`mAP50-95` 为 `0.783`；微调后的 `leaf_sim_best.pt` 分别为 `1.000` 和
+`0.969`。训练集只覆盖当前 Gazebo 低面植物，因此 `citrus.pt` 仍被保留作为真实叶片实验的基线，
+不能用仿真验证集指标推断真实果园精度。
+
+### 7.4 子模块提示 `not our ref`
 
 这通常说明父仓库固定到了远端已经无法取得的提交。不要反复执行同一条 `git submodule update`；应先核对 `.gitmodules` URL 和父仓库记录的 gitlink，再切换到远端实际存在、与 Humble 兼容的提交。
 
-### 构建模式冲突
+### 7.5 构建模式冲突
 
 普通构建和 `--symlink-install` 会让同一个 Python 包生成不同类型的路径。出现 `existing path cannot be removed: Is a directory` 时，只清理出错包对应的 `build/<包名>` 和 `install/<包名>` 后重建，不要无差别删除整个工作区。
 
-### 画圆结束后机械臂或夹爪 TF 消失、跳变
+### 7.6 画圆结束后机械臂或夹爪 TF 消失、跳变
 
 Gazebo 联动模式下，圆轨迹节点只发布控制器命令，动态 TF 来自 `robot_state_publisher`，`/joint_states` 来自 `joint_state_broadcaster`。如果 `/joint_states` 有多个发布者，通常是误启动了第二套仿真，应先关闭重复节点：
 
@@ -453,7 +550,7 @@ ros2 topic info /joint_states --verbose
 ros2 run tf2_ros tf2_echo base gripper
 ```
 
-## 参考文献
+## 8. 参考文献
 
 Mortazavi, M., Cappelleri, D. J., Ehsani, R. (2025). *RoMu4o: A Robotic Manipulation Unit for Orchard Operations Automating Proximal Hyperspectral Leaf Sensing*. arXiv:2409.19786.
 

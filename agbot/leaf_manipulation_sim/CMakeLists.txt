@@ -110,6 +110,12 @@ install(PROGRAMS
 )
 
 install(PROGRAMS
+  leaf_manipulation_sim/point_cloud_optical_adapter.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME point_cloud_optical_adapter
+)
+
+install(PROGRAMS
   leaf_manipulation_sim/leaf_grasp_demo.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME leaf_grasp_demo
@@ -119,6 +125,12 @@ install(PROGRAMS
   leaf_manipulation_sim/leaf_mtc_pinch_demo.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME leaf_mtc_pinch_demo
+)
+
+install(PROGRAMS
+  leaf_manipulation_sim/leaf_perception_pipeline.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME leaf_perception_pipeline
 )
 
 if(BUILD_TESTING)

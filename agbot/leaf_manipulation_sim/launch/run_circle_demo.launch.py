@@ -23,6 +23,8 @@ def generate_launch_description():
     velocity_scale = LaunchConfiguration('velocity_scale')
     acceleration_scale = LaunchConfiguration('acceleration_scale')
     finger_position = LaunchConfiguration('finger_position')
+    observation_only = LaunchConfiguration('observation_only')
+    hold_final_state = LaunchConfiguration('hold_final_state')
 
     urdf_path = os.path.join(pkg_sim, 'urdf', 'leaf_arm.sim.urdf.xacro')
     robot_description = {'robot_description': Command(['xacro ', urdf_path])}
@@ -49,6 +51,8 @@ def generate_launch_description():
         DeclareLaunchArgument('velocity_scale', default_value='0.2'),
         DeclareLaunchArgument('acceleration_scale', default_value='0.2'),
         DeclareLaunchArgument('finger_position', default_value='0.10'),
+        DeclareLaunchArgument('observation_only', default_value='false'),
+        DeclareLaunchArgument('hold_final_state', default_value='true'),
         Node(
             package='leaf_manipulation_sim',
             executable='circle_motion_demo',
@@ -63,6 +67,8 @@ def generate_launch_description():
                 {'velocity_scale': velocity_scale},
                 {'acceleration_scale': acceleration_scale},
                 {'finger_position': finger_position},
+                {'observation_only': observation_only},
+                {'hold_final_state': hold_final_state},
                 {'use_sim_time': True},
             ],
         ),

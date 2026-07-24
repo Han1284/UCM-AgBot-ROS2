@@ -2,6 +2,7 @@
 #include <chrono>
 #include <cmath>
 #include <memory>
+#include <map>
 #include <optional>
 #include <string>
 #include <thread>
@@ -66,6 +67,11 @@ public:
     velocity_scale_ = getOrDeclareParameter("velocity_scale", 0.2);
     acceleration_scale_ = getOrDeclareParameter("acceleration_scale", 0.2);
     finger_position_ = getOrDeclareParameter("finger_position", kDefaultFingerPosition);
+    observation_only_ = getOrDeclareParameter("observation_only", false);
+    hold_final_state_ = getOrDeclareParameter("hold_final_state", true);
+    observation_joints_ = getOrDeclareParameter(
+      "observation_joint_positions",
+      std::vector<double>{0.213, 0.464, 0.548, 0.559, 1.571, 0.213});
     arm_command_pub_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>(
       "/arm_position_controller/commands", 10);
     gripper_command_pub_ = node_->create_publisher<std_msgs::msg::Float64MultiArray>(
@@ -98,6 +104,11 @@ public:
     move_group.setMaxAccelerationScalingFactor(acceleration_scale_);
     move_group.setPlanningTime(5.0);
 
+    if (observation_only_) {
+      return planAndReplayJointTarget(
+        move_group, arm_joints, observation_joints_, "D435 leaf observation");
+    }
+
     auto start_state = planAndReplayNamedTarget(move_group, "ready1");
     if (!start_state) {
       return false;
@@ -129,7 +140,39 @@ public:
     }
   }
 
+  bool holdFinalStateRequested() const
+  {
+    return hold_final_state_;
+  }
+
 private:
+  bool planAndReplayJointTarget(
+    moveit::planning_interface::MoveGroupInterface& move_group,
+    const std::vector<std::string>& names,
+    const std::vector<double>& positions,
+    const std::string& label)
+  {
+    if (names.size() != positions.size()) {
+      RCLCPP_ERROR(node_->get_logger(), "%s target has the wrong size", label.c_str());
+      return false;
+    }
+    std::map<std::string, double> target;
+    for (std::size_t index = 0; index < names.size(); ++index) {
+      target[names[index]] = positions[index];
+    }
+    move_group.setJointValueTarget(target);
+    moveit::planning_interface::MoveGroupInterface::Plan plan;
+    const auto result = move_group.plan(plan);
+    if (result != moveit::core::MoveItErrorCode::SUCCESS) {
+      RCLCPP_ERROR(node_->get_logger(), "Failed to plan %s pose", label.c_str());
+      return false;
+    }
+    RCLCPP_INFO(node_->get_logger(), "Replaying collision-aware %s trajectory", label.c_str());
+    replayTrajectory(plan.trajectory_);
+    RCLCPP_INFO(node_->get_logger(), "%s pose reached", label.c_str());
+    return true;
+  }
+
   std::optional<TrajectoryEndpoint> planAndReplayNamedTarget(
     moveit::planning_interface::MoveGroupInterface& move_group,
     const std::string& target_name)
@@ -388,6 +431,9 @@ private:
   double velocity_scale_;
   double acceleration_scale_;
   double finger_position_;
+  bool observation_only_;
+  bool hold_final_state_;
+  std::vector<double> observation_joints_;
   std::vector<std::string> last_joint_names_;
   std::vector<double> last_joint_positions_;
 };
@@ -405,7 +451,7 @@ int main(int argc, char* argv[])
 
   CircleMotionDemo demo(node);
   const bool ok = demo.run();
-  if (ok) {
+  if (ok && demo.holdFinalStateRequested()) {
     demo.holdFinalState();
   }
 

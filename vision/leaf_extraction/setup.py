@@ -12,7 +12,10 @@ setup(
         ('share/' + package_name, ['package.xml']),
         (
             'share/' + package_name + '/segmentation_model',
-            ['segmentation_model/citrus.pt'],
+            [
+                'segmentation_model/citrus.pt',
+                'segmentation_model/leaf_sim_best.pt',
+            ],
         ),
     ],
     install_requires=['setuptools'],

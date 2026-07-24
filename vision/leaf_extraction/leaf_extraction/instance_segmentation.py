@@ -1,5 +1,4 @@
 import numpy as np
-import open3d as o3d
 import struct
 import cv2
 from PIL import Image
@@ -9,19 +8,25 @@ from scipy.spatial.transform import Rotation as R
 from scipy.stats import norm as normalized
 import time
 from sklearn.neighbors import NearestNeighbors
-from kneed import KneeLocator
 
-from rclpy.qos import QoSProfile, DurabilityPolicy
+from rclpy.qos import (
+    DurabilityPolicy,
+    QoSProfile,
+    qos_profile_sensor_data,
+)
 import rclpy
+from rclpy.duration import Duration
 from rclpy.node import Node
+from rclpy.time import Time
 from sensor_msgs.msg import PointCloud2
-from geometry_msgs.msg import Pose, PoseArray
+from geometry_msgs.msg import Point, Pose, PoseArray
+from visualization_msgs.msg import Marker, MarkerArray
+from tf2_ros import Buffer, TransformException, TransformListener
 from custom_interfaces.msg import LeafPoseArrays
 from cv_bridge import CvBridge
 from ultralytics import YOLO
 from sklearn.cluster import DBSCAN, OPTICS
 from sklearn.decomposition import PCA
-import pandas as pd
 import os
 from ament_index_python.packages import get_package_share_directory
 
@@ -31,10 +36,17 @@ class ImageProcessor(Node):
         default_model = os.path.join(
             get_package_share_directory('leaf_extraction'),
             'segmentation_model',
-            'citrus.pt')
+            'leaf_sim_best.pt')
         self.declare_parameter(
             'point_cloud_topic',
-            '/perception_test_camera/depth/color/points')
+            '/camera/depth/color/points')
+        self.declare_parameter('target_frame', 'world')
+        self.declare_parameter(
+            'detections_topic', '/leaf_perception/detected_leaves')
+        self.declare_parameter(
+            'selected_topic', '/target_leaves_multi_pose')
+        self.declare_parameter('interactive_selection', True)
+        self.declare_parameter('debug_visualization', False)
         self.declare_parameter('model_path', default_model)
         self.declare_parameter('confidence', 0.25)
         point_cloud_topic = (
@@ -43,15 +55,38 @@ class ImageProcessor(Node):
         model_path = (
             self.get_parameter('model_path')
             .get_parameter_value().string_value)
+        self.target_frame = (
+            self.get_parameter('target_frame')
+            .get_parameter_value().string_value)
+        detections_topic = self.get_parameter('detections_topic').value
+        selected_topic = self.get_parameter('selected_topic').value
+        self.interactive_selection = bool(
+            self.get_parameter('interactive_selection').value)
+        self.debug_visualization = bool(
+            self.get_parameter('debug_visualization').value)
+
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
+        self.cloud_transform = None
+        self.cloud_stamp = None
 
         self.point_cloud_subscription = self.create_subscription(
-            PointCloud2, point_cloud_topic, self.point_cloud_callback, 10)
+            PointCloud2,
+            point_cloud_topic,
+            self.point_cloud_callback,
+            qos_profile_sensor_data)
 
         self.pose_array_publisher = self.create_publisher(PoseArray,'/target_leaves',
                                         QoSProfile(depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL))
 
-        self.multi_pose_array_publisher = self.create_publisher(LeafPoseArrays,'/target_leaves_multi_pose',
-                                QoSProfile(depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL))
+        transient_qos = QoSProfile(
+            depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        self.multi_pose_array_publisher = self.create_publisher(
+            LeafPoseArrays, detections_topic, transient_qos)
+        self.selected_pose_publisher = self.create_publisher(
+            LeafPoseArrays, selected_topic, transient_qos)
+        self.marker_publisher = self.create_publisher(
+            MarkerArray, '/leaf_perception/markers', transient_qos)
 
         self.bridge = CvBridge()
         if not os.path.isfile(model_path):
@@ -63,6 +98,9 @@ class ImageProcessor(Node):
             self.get_parameter('confidence').get_parameter_value().double_value)
         self.get_logger().info(
             f'Using model={model_path}, point_cloud_topic={point_cloud_topic}, '
+            f'target_frame={self.target_frame}, '
+            f'detections_topic={detections_topic}, '
+            f'selected_topic={selected_topic}, '
             f'confidence={self.conf_cutoff:.3f}')
         self.rgb_masked = None
 
@@ -96,21 +134,47 @@ class ImageProcessor(Node):
         if self.processed:
             return
 
+        try:
+            self.cloud_transform = self.tf_buffer.lookup_transform(
+                self.target_frame,
+                msg.header.frame_id,
+                Time.from_msg(msg.header.stamp),
+                timeout=Duration(seconds=0.25))
+        except TransformException as exc:
+            self.get_logger().warn(
+                f'Waiting for TF {self.target_frame} <- '
+                f'{msg.header.frame_id}: {exc}',
+                throttle_duration_sec=2.0)
+            return
+
+        self.cloud_stamp = msg.header.stamp
         self.points, self.colors = self.extract_points_and_colors(msg)
         self.combined_masks, self.ordered_masks, self.confs = self.extract_masks()
+        if not self.ordered_masks:
+            self.get_logger().warn(
+                'No leaves found in the current D435 view; waiting for the '
+                'next frame after the observation pose changes.',
+                throttle_duration_sec=2.0)
+            return
         self.combined_masks_filtered, self.masks_xyzs = self.extract_masks_xyzs()
         self.midpoints = self.extract_midpoints()
         self.normal_vectors = self.fit_plane_and_find_normal()
         self.axes = self.axes_for_masks()
         self.reorder_and_limit()
+        if not self.midpoints:
+            self.get_logger().warn(
+                'Leaf masks were found, but none contained valid depth points.',
+                throttle_duration_sec=2.0)
+            return
         self.Poses1, self.Poses2, self.Poses3, self.Poses4, self.Poses5 = self.calculate_multiple_poses()
         self.publish_leaf_pose_arrays()
-        print(self.Poses1)
+        self.select_and_publish_leaf()
 
-        self.save_results()
-        self.save_ordered_segments()
-        self.plot_masked_points()
-        self.plotting_o3d()
+        if self.debug_visualization:
+            self.save_results()
+            self.save_ordered_segments()
+            self.plot_masked_points()
+            self.plotting_o3d()
 
         self.processed = True
 
@@ -139,14 +203,19 @@ class ImageProcessor(Node):
 
         open_cv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
         cv2.imwrite("../UCM-AgBot-ROS2/src/vision/leaf_extraction/segmentation_model/pc_rgb.jpg", open_cv_image)
-        results = self.model([open_cv_image], imgsz=self.width, save=True, conf=self.conf_cutoff)
+        results = self.model(
+            [open_cv_image],
+            imgsz=self.width,
+            save=False,
+            verbose=False,
+            conf=self.conf_cutoff)
         self.rgb_masked = results[0].orig_img
 
         combined_masks = np.zeros((self.height, self.width), dtype=np.uint8)
         ordered_masks = []
 
         for result in results:
-            confs = result.boxes.conf.numpy()
+            confs = result.boxes.conf.cpu().numpy()
             for i in range(result.__len__()):
 
                 yolo_hight, yolo_width = result.masks[i].shape[1], result.masks[i].shape[2]
@@ -198,6 +267,8 @@ class ImageProcessor(Node):
     #     return filtered_masked_points
 
     def filter_outliers_dbscan(self, points):
+        from kneed import KneeLocator
+
         if self.dbscan_ms is None:
             self.dbscan_ms = int(np.log(len(points)) + 1)
 
@@ -333,7 +404,11 @@ class ImageProcessor(Node):
             pca.fit(points) 
             normal_vector = pca.components_[-1]
 
-            if normal_vector[1] > 0:
+            # PCA normal signs are arbitrary.  Choose the side facing the
+            # eye-in-hand camera: points extend along optical +Z, so a normal
+            # pointing back toward the camera has a negative dot product with
+            # the leaf centre vector.
+            if np.dot(normal_vector, self.midpoints[len(vectors)]) > 0:
                 normal_vector = -normal_vector
             
             vectors.append(normal_vector)
@@ -437,36 +512,65 @@ class ImageProcessor(Node):
         
         for i, axis_set in enumerate(self.axes):
             position = self.midpoints[i]
-            transformed_p=( 
-                            np.array([17.5, 124.33, -195.62])*0.001+  ### the vector that connects RG2 to camera
-                            np.array([0.0, 0.0, -15.0])*0.001+ ### the gap between the new printed fingers and the old ones  
-                            np.array([-position[0], -position[1], position[2]])+  ### Midpoints as detected by the camera
-                            np.array([30.0, -25.0, -10.0])*0.001 ### camera bias
-                            ) # in {RG2} frame. Meaning x and y components of position need to be multiplied by -1
+            normal_axis, stem_axis = axis_set[0], axis_set[1]
+            # The TM model's virtual "gripper" link is 0.215 m along gripper
+            # +Z from link_6, approximately at the finger contact point.
+            # Put that +Z axis from the camera side toward the leaf so the
+            # fingertips, rather than the RG2 base, reach the detected centre.
+            gripper_z = -normal_axis
+            gripper_x = stem_axis
+            gripper_y = np.cross(gripper_z, gripper_x)
+            gripper_y /= np.linalg.norm(gripper_y)
+            gripper_x = np.cross(gripper_y, gripper_z)
+            gripper_x /= np.linalg.norm(gripper_x)
+            camera_from_leaf = np.column_stack(
+                (gripper_x, gripper_y, gripper_z))
 
-            axis1, axis2, axis3 = axis_set[0], axis_set[1], axis_set[2]
-            R_g_l1 =  np.array([[-axis1[0], -axis2[0], -axis3[0]],
-                                [-axis1[1], -axis2[1], -axis3[1]],
-                                [ axis1[2],  axis2[2],  axis3[2]]]) # how leaf pose1 axes are represented in gripper frame
+            rotation_as_quat1 = self.transform_rotated_matrices(
+                camera_from_leaf, 0)
+            rotation_as_quat2 = self.transform_rotated_matrices(
+                camera_from_leaf, -45)
+            rotation_as_quat3 = self.transform_rotated_matrices(
+                camera_from_leaf, -90)
+            rotation_as_quat4 = self.transform_rotated_matrices(
+                camera_from_leaf, -135)
+            rotation_as_quat5 = self.transform_rotated_matrices(
+                camera_from_leaf, -180)
 
-            rotation_as_quat1 = self.transform_rotated_matrices(R_g_l1, 0)
-            rotation_as_quat2 = self.transform_rotated_matrices(R_g_l1, -45)
-            rotation_as_quat3 = self.transform_rotated_matrices(R_g_l1, -90)
-            rotation_as_quat4 = self.transform_rotated_matrices(R_g_l1, -135)
-            rotation_as_quat5 = self.transform_rotated_matrices(R_g_l1, -180)
-
-            Poses1.append(np.concatenate([transformed_p,rotation_as_quat1]))
-            Poses2.append(np.concatenate([transformed_p,rotation_as_quat2]))
-            Poses3.append(np.concatenate([transformed_p,rotation_as_quat3]))
-            Poses4.append(np.concatenate([transformed_p,rotation_as_quat4]))
-            Poses5.append(np.concatenate([transformed_p,rotation_as_quat5]))
+            Poses1.append(self.transform_pose(position, rotation_as_quat1))
+            Poses2.append(self.transform_pose(position, rotation_as_quat2))
+            Poses3.append(self.transform_pose(position, rotation_as_quat3))
+            Poses4.append(self.transform_pose(position, rotation_as_quat4))
+            Poses5.append(self.transform_pose(position, rotation_as_quat5))
 
         return np.array(Poses1), np.array(Poses2), np.array(Poses3), np.array(Poses4), np.array(Poses5)
 
+    def transform_pose(self, position, orientation):
+        """Transform a leaf pose from the point-cloud frame into target_frame."""
+        transform = self.cloud_transform.transform
+        target_from_camera = R.from_quat([
+            transform.rotation.x,
+            transform.rotation.y,
+            transform.rotation.z,
+            transform.rotation.w,
+        ])
+        translation = np.array([
+            transform.translation.x,
+            transform.translation.y,
+            transform.translation.z,
+        ])
+        transformed_position = (
+            target_from_camera.apply(position) + translation)
+        transformed_orientation = (
+            target_from_camera * R.from_quat(orientation)).as_quat()
+        return np.concatenate([
+            transformed_position,
+            transformed_orientation,
+        ])
 
     def transform_rotated_matrices(self, ax, angle):
         R_g_l1 = R.from_matrix(ax)
-        R_l1_lx = R.from_euler('X', angle, degrees=True)
+        R_l1_lx = R.from_euler('Z', angle, degrees=True)
         R_g_lx = (R_g_l1 * R_l1_lx).as_quat()
 
         return R_g_lx
@@ -491,13 +595,104 @@ class ImageProcessor(Node):
 
 
     def publish_leaf_pose_arrays(self):
+        leaf_pose_arrays_msg = self.create_leaf_pose_arrays()
+        self.multi_pose_array_publisher.publish(leaf_pose_arrays_msg)
+
+    def publish_leaf_markers(self, selected_index=None):
+        """Show terminal leaf numbers, centres and normals in RViz."""
+        marker_array = MarkerArray()
+        transform = self.cloud_transform.transform
+        target_from_camera = R.from_quat([
+            transform.rotation.x,
+            transform.rotation.y,
+            transform.rotation.z,
+            transform.rotation.w,
+        ])
+
+        for index, pose in enumerate(self.Poses1):
+            selected = index == selected_index
+            centre = np.asarray(pose[:3], dtype=float)
+            normal = target_from_camera.apply(self.normal_vectors[index])
+            normal_length = np.linalg.norm(normal)
+            if normal_length > 1e-9:
+                normal /= normal_length
+
+            centre_marker = Marker()
+            centre_marker.header.frame_id = self.target_frame
+            centre_marker.header.stamp = self.cloud_stamp
+            centre_marker.ns = 'leaf_centres'
+            centre_marker.id = index
+            centre_marker.type = Marker.SPHERE
+            centre_marker.action = Marker.ADD
+            centre_marker.pose.position.x = float(centre[0])
+            centre_marker.pose.position.y = float(centre[1])
+            centre_marker.pose.position.z = float(centre[2])
+            centre_marker.pose.orientation.w = 1.0
+            centre_marker.scale.x = 0.018
+            centre_marker.scale.y = 0.018
+            centre_marker.scale.z = 0.018
+            centre_marker.color.r = 1.0 if selected else 0.1
+            centre_marker.color.g = 0.2 if selected else 0.9
+            centre_marker.color.b = 0.1
+            centre_marker.color.a = 1.0
+            marker_array.markers.append(centre_marker)
+
+            normal_marker = Marker()
+            normal_marker.header = centre_marker.header
+            normal_marker.ns = 'leaf_normals'
+            normal_marker.id = index
+            normal_marker.type = Marker.ARROW
+            normal_marker.action = Marker.ADD
+            normal_marker.points = [
+                Point(
+                    x=float(centre[0]),
+                    y=float(centre[1]),
+                    z=float(centre[2])),
+                Point(
+                    x=float(centre[0] + 0.08 * normal[0]),
+                    y=float(centre[1] + 0.08 * normal[1]),
+                    z=float(centre[2] + 0.08 * normal[2])),
+            ]
+            normal_marker.scale.x = 0.006
+            normal_marker.scale.y = 0.012
+            normal_marker.scale.z = 0.018
+            normal_marker.color.r = 1.0 if selected else 0.1
+            normal_marker.color.g = 0.5 if selected else 0.7
+            normal_marker.color.b = 0.0 if selected else 1.0
+            normal_marker.color.a = 1.0
+            marker_array.markers.append(normal_marker)
+
+            label_marker = Marker()
+            label_marker.header = centre_marker.header
+            label_marker.ns = 'leaf_numbers'
+            label_marker.id = index
+            label_marker.type = Marker.TEXT_VIEW_FACING
+            label_marker.action = Marker.ADD
+            label_marker.pose.position.x = float(centre[0])
+            label_marker.pose.position.y = float(centre[1])
+            label_marker.pose.position.z = float(centre[2] + 0.055)
+            label_marker.pose.orientation.w = 1.0
+            label_marker.scale.z = 0.04
+            label_marker.color.r = 1.0
+            label_marker.color.g = 0.25 if selected else 1.0
+            label_marker.color.b = 0.1 if selected else 1.0
+            label_marker.color.a = 1.0
+            label_marker.text = str(index + 1)
+            marker_array.markers.append(label_marker)
+
+        self.marker_publisher.publish(marker_array)
+
+    def create_leaf_pose_arrays(self, selected_index=None):
         leaf_pose_arrays_msg = LeafPoseArrays()
-        leaf_pose_arrays_msg.header.stamp = self.get_clock().now().to_msg()
-        leaf_pose_arrays_msg.header.frame_id = "gripper"
+        leaf_pose_arrays_msg.header.stamp = self.cloud_stamp
+        leaf_pose_arrays_msg.header.frame_id = self.target_frame
 
         def create_poses(poses):
+            source = poses
+            if selected_index is not None:
+                source = poses[selected_index:selected_index + 1]
             pose_msgs = []
-            for pose in poses:
+            for pose in source:
                 pose_msg = Pose()
                 pose_msg.position.x = pose[0]
                 pose_msg.position.y = pose[1]
@@ -514,11 +709,61 @@ class ImageProcessor(Node):
         leaf_pose_arrays_msg.poses3 = create_poses(self.Poses3)
         leaf_pose_arrays_msg.poses4 = create_poses(self.Poses4)
         leaf_pose_arrays_msg.poses5 = create_poses(self.Poses5)
+        return leaf_pose_arrays_msg
 
-        self.multi_pose_array_publisher.publish(leaf_pose_arrays_msg)
+    def select_and_publish_leaf(self):
+        count = len(self.Poses1)
+        self.publish_leaf_markers()
+        print(
+            f'\n[leaf_perception] 找到 {count} 片叶子，'
+            f'坐标系为 {self.target_frame}:',
+            flush=True)
+        for index, pose in enumerate(self.Poses1, start=1):
+            confidence = (
+                float(self.confs[index - 1])
+                if index - 1 < len(self.confs) else float('nan'))
+            print(
+                f'  {index}. x={pose[0]:.4f}, y={pose[1]:.4f}, '
+                f'z={pose[2]:.4f}, confidence={confidence:.3f}',
+                flush=True)
+
+        selected_index = 0
+        if self.interactive_selection:
+            while rclpy.ok():
+                try:
+                    answer = input(
+                        f'请选择叶片编号 [1-{count}]，输入 q 取消: '
+                    ).strip()
+                except EOFError:
+                    self.get_logger().error(
+                        'No interactive terminal is available for selection')
+                    return
+                if answer.lower() in ('q', 'quit', 'cancel'):
+                    self.get_logger().info('Leaf selection cancelled')
+                    return
+                try:
+                    selected_index = int(answer) - 1
+                except ValueError:
+                    print('请输入列表中的数字。', flush=True)
+                    continue
+                if 0 <= selected_index < count:
+                    break
+                print(f'编号应在 1 到 {count} 之间。', flush=True)
+
+        selected = self.create_leaf_pose_arrays(selected_index)
+        self.selected_pose_publisher.publish(selected)
+        self.publish_leaf_markers(selected_index)
+        pose = self.Poses1[selected_index]
+        print(
+            f'[leaf_perception] 已选择叶片 {selected_index + 1}: '
+            f'({pose[0]:.4f}, {pose[1]:.4f}, {pose[2]:.4f})。'
+            '正在交给 MoveIt Task Constructor 规划完整夹叶任务……',
+            flush=True)
 
 
     def save_results(self):
+        import pandas as pd
+
         # Create a dictionary of the attributes to save
         results_data = {
             'points': self.points,
@@ -615,6 +860,8 @@ class ImageProcessor(Node):
 
 
     def plotting_o3d(self):
+        import open3d as o3d
+
         threshold = self.threshold_xyz
 
         distances_main = np.linalg.norm(self.points, axis=1)
@@ -673,9 +920,14 @@ class ImageProcessor(Node):
 def main(args=None):
     rclpy.init(args=args)
     image_processor_node = ImageProcessor()
-    rclpy.spin_once(image_processor_node)
-    image_processor_node.destroy_node()
-    rclpy.shutdown()
+    try:
+        rclpy.spin(image_processor_node)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        image_processor_node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

@@ -2,7 +2,8 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.substitutions import Command
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import Command, LaunchConfiguration
 from launch_ros.actions import Node
 import yaml
 
@@ -78,10 +79,17 @@ def generate_launch_description():
     planning_pipeline['ompl'].update(ompl_planning_yaml)
 
     return LaunchDescription([
+        DeclareLaunchArgument(
+            'ik_only',
+            default_value='false',
+            description='Stop after ranked collision-aware IK solutions'),
         Node(
             package='leaf_manipulation_sim',
             executable='leaf_mtc_pinch_demo',
             output='screen',
+            additional_env={
+                'LEAF_MTC_IK_ONLY': LaunchConfiguration('ik_only'),
+            },
             parameters=[
                 robot_description,
                 robot_description_semantic,

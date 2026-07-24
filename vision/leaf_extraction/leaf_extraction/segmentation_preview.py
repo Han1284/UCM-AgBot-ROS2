@@ -17,7 +17,7 @@ def default_model_path():
     return os.path.join(
         get_package_share_directory('leaf_extraction'),
         'segmentation_model',
-        'citrus.pt',
+        'leaf_sim_best.pt',
     )
 
 
