@@ -5,17 +5,19 @@
 1. [仓库结构](#1-仓库结构)
 2. [环境与依赖](#2-环境与依赖)
 3. [获取源码和构建](#3-获取源码和构建)
-4. [Leaf 机械臂 Gazebo 仿真](#4-leaf-机械臂-gazebo-仿真)
-   1. [完整 Gazebo Fortress 控制仿真](#41-完整-gazebo-fortress-控制仿真)
-   2. [圆轨迹 Gazebo 与 MoveIt 联动演示](#42-圆轨迹-gazebo-与-moveit-联动演示)
-   3. [指定位姿抓取演示](#43-指定位姿抓取演示)
-   4. [已标定叶片轻夹演示](#44-已标定叶片轻夹演示)
-   5. [MoveIt Task Constructor 候选解与评分](#45-moveit-task-constructor-候选解与评分)
-   6. [交互式叶片感知与完整夹叶规划 Demo](#46-交互式叶片感知与完整夹叶规划-demo)
-5. [整机、传感器与导航入口](#5-整机传感器与导航入口)
-6. [TM5-900 实机和驱动 demo](#6-tm5-900-实机和驱动-demo)
-7. [常见问题](#7-常见问题)
-8. [参考文献](#8-参考文献)
+4. [整机与机械臂仿真](#4-整机与机械臂仿真)
+   1. [整机仿真入口](#41-整机仿真入口)
+      1. [不带植物的整机仿真启动](#411-不带植物的整机仿真启动)
+      2. [带植物的 Gazebo 与 RViz 仿真启动](#412-带植物的-gazebo-与-rviz-仿真启动)
+   2. [机械臂仿真 Demo](#42-机械臂仿真-demo)
+      1. [圆轨迹 Gazebo 与 MoveIt 联动演示](#421-圆轨迹-gazebo-与-moveit-联动演示)
+      2. [指定位姿抓取演示](#422-指定位姿抓取演示)
+      3. [已标定叶片轻夹演示](#423-已标定叶片轻夹演示)
+      4. [MoveIt Task Constructor 候选解与评分](#424-moveit-task-constructor-候选解与评分)
+      5. [交互式叶片感知与完整夹叶规划 Demo](#425-交互式叶片感知与完整夹叶规划-demo)
+5. [TM5-900 实机和驱动](#5-tm5-900-实机和驱动)
+6. [常见问题](#6-常见问题)
+7. [参考文献](#7-参考文献)
 
 本仓库用于复现并继续开发 [mehradmrt/UCM-AgBot-ROS2](https://github.com/mehradmrt/UCM-AgBot-ROS2)。当前开发主线是 `leaf-manipulator` 相关工作，原始 UCM-AgBot 工程及 TM、RealSense、VectorNav、SLLidar、OnRobot 等组件作为源码依赖一起参与构建。
 
@@ -101,9 +103,35 @@ source /opt/ros/humble/setup.bash
 source install/setup.bash
 ```
 
-## 4. Leaf 机械臂 Gazebo 仿真
+## 4. 整机与机械臂仿真
 
-### 4.1 完整 Gazebo Fortress 控制仿真
+### 4.1 整机仿真入口
+
+#### 4.1.1 不带植物的整机仿真启动
+
+启动传感器，可按需关闭不使用的设备：
+
+```bash
+ros2 launch robot_bringup sensors.launch.py \
+  imu:=true gnss:=true lidar2d:=true realsense:=true encoders:=true
+```
+
+启动整机底层、定位、导航或 SLAM：
+
+```bash
+ros2 launch robot_bringup bringup.launch.py
+ros2 launch robot_bringup localization.launch.py
+ros2 launch robot_bringup navigation.launch.py
+ros2 launch robot_bringup slam.launch.py
+```
+
+只启动机械臂侧传感器：
+
+```bash
+ros2 launch robot_bringup sensors_arm.launch.py
+```
+
+#### 4.1.2 带植物的 Gazebo 与 RViz 仿真启动
 
 这是当前唯一的 leaf 仿真主入口，会启动 Gazebo Fortress、TM5-900、RG2 夹爪、植物、MoveIt、RViz 以及 `gz_ros2_control` 控制器，但不会自动执行画圆：
 
@@ -135,7 +163,13 @@ ros2 topic pub --once /gripper_position_controller/commands \
   "{data: [0.20, -0.20, 0.20, -0.20, -0.20, 0.20]}"
 ```
 
-### 4.2 圆轨迹 Gazebo 与 MoveIt 联动演示
+### 4.2 机械臂仿真 Demo
+
+以下五个 Demo 共用 `leaf_manipulation_sim` 仿真环境。除非小节另有说明，
+先通过 4.1.2 启动一份带植物的 Gazebo 和 RViz，再在第二个终端运行对应的
+演示入口。
+
+#### 4.2.1 圆轨迹 Gazebo 与 MoveIt 联动演示
 
 leaf 仿真后端已从 Gazebo Classic 11 整体迁移到 Gazebo Fortress 6。机械臂由
 `ros_gz_sim` 生成，控制插件为 `gz_ros2_control`；RGB-D、点云和接触传感器经
@@ -170,7 +204,7 @@ ros2 launch leaf_manipulation_sim run_circle_demo.launch.py \
 
 圆轨迹演示使用简化碰撞几何。由于立柱与固定安装座的碰撞体存在重叠，画圆段关闭了碰撞拒绝，但仍执行 IK 与关节限位检查；该设置只适用于 Gazebo 演示，不应直接用于实机路径规划。
 
-### 4.3 指定位姿抓取演示
+#### 4.2.2 指定位姿抓取演示
 
 先在终端一启动 Gazebo、MoveIt、控制器和 RViz：
 
@@ -194,7 +228,7 @@ ros2 launch leaf_manipulation_sim run_pose_grasp_demo.launch.py \
 ros2 run leaf_manipulation_sim prompt_pose_grasp_demo
 ```
 
-### 4.4 已标定叶片轻夹演示
+#### 4.2.3 已标定叶片轻夹演示
 
 这个入口使用第 1 片叶子的外侧第 5 段碰撞盒作为目标。夹爪闭合轴与叶面法向
 对齐，运动过程中保持 `link_6`、夹爪基座和 D435 不接触叶片。它只执行动作，
@@ -216,7 +250,7 @@ ros2 launch leaf_manipulation_sim run_leaf_pinch_demo.launch.py
 演示会依次张开夹爪、移动到已标定叶尖位姿、闭合一次、重新张开并返回
 竖直 `home`，完成后自动退出。可通过 `grasp_hold_sec:=3.0` 调整闭合保持时间。
 
-### 4.5 MoveIt Task Constructor 候选解与评分
+#### 4.2.4 MoveIt Task Constructor 候选解与评分
 
 RViz 配置中已经加入 MoveIt 2 官方 MTC 的 `Motion Planning Tasks` 面板。
 仿真启动时会读取 Gazebo 使用的 `simple_potted_plant/model.sdf`，将花盆和
@@ -249,7 +283,7 @@ ros2 launch leaf_manipulation_sim run_leaf_mtc_demo.launch.py
 `move_group` 禁止轨迹执行，因此该面板只用于比较和预览；确认候选位姿后，
 使用 `run_leaf_pinch_demo.launch.py` 执行已经验证过的轻夹动作。
 
-### 4.6 交互式叶片感知与完整夹叶规划 Demo
+#### 4.2.5 交互式叶片感知与完整夹叶规划 Demo
 
 日常抓叶仿真使用机械臂手腕上的 D435，不使用独立训练相机。仿真已经把
 Gazebo 的 X-forward 点云转换成 REP-103 的 Z-forward 光学点云，并由 tf2
@@ -297,31 +331,7 @@ ros2 topic echo /leaf_perception/markers --once
 点云仅作为内部输入保留在 `/camera/depth/color/points_gz`，不应直接交给
 感知节点。
 
-## 5. 整机、传感器与导航入口
-
-启动传感器，可按需关闭不使用的设备：
-
-```bash
-ros2 launch robot_bringup sensors.launch.py \
-  imu:=true gnss:=true lidar2d:=true realsense:=true encoders:=true
-```
-
-启动整机底层、定位、导航或 SLAM：
-
-```bash
-ros2 launch robot_bringup bringup.launch.py
-ros2 launch robot_bringup localization.launch.py
-ros2 launch robot_bringup navigation.launch.py
-ros2 launch robot_bringup slam.launch.py
-```
-
-只启动机械臂侧传感器：
-
-```bash
-ros2 launch robot_bringup sensors_arm.launch.py
-```
-
-## 6. TM5-900 实机和驱动 demo
+## 5. TM5-900 实机和驱动
 
 以下命令面向真实 TM 机械臂，不应与纯 Gazebo 演示混为一谈。先在终端一启动驱动，将 IP 地址替换为 TMflow 中配置的机器人地址：
 
@@ -371,9 +381,9 @@ ros2 launch ui_for_debug_and_demo tm_gui.launch.py robot_ip:=192.168.1.19
 
 该 GUI 仍声明了未纳入当前源码树的 `robot_server_msgs`，如果运行时报缺包，应先补入对应消息包；这不影响 Gazebo leaf 主线。
 
-## 7. 常见问题
+## 6. 常见问题
 
-### 7.1 Gazebo 中能生成实体但看不到机械臂
+### 6.1 Gazebo 中能生成实体但看不到机械臂
 
 TM5 和 RG2 的网格使用 `package://tm_description/...` 与 `package://onrobot_rg_description/...`。Gazebo Fortress 需要通过 `GZ_SIM_RESOURCE_PATH` 或兼容变量 `IGN_GAZEBO_RESOURCE_PATH` 找到这些资源。内部的 `gazebo.launch.py` 已自动加入相关安装包的 `share` 父目录；修改后必须重新构建并重新加载工作区：
 
@@ -390,7 +400,7 @@ rg -n "No mesh specified|Unable to find uri|Unable to find file" \
   ~/.ros/log/latest/* 2>/dev/null
 ```
 
-### 7.2 没有 `/camera` 图像话题
+### 6.2 没有 `/camera` 图像话题
 
 Fortress 使用原生 RGB-D 传感器，并由 `ros_gz_bridge` 转换成 ROS 图像、深度图和点云。若话题缺失，先确认迁移依赖存在，再重新启动整个仿真：
 
@@ -409,7 +419,7 @@ ros2 topic hz /camera/depth/color/points
 
 `leaf_manipulation.rviz` 保留主 Displays 面板，不再启动名为 Camera 的额外面板；植物继续由 `/plant_marker` 显示。需要检查相机时，可临时添加 Image 显示并选择上述话题。
 
-### 7.3 独立训练相机与叶片分割
+### 6.3 独立训练相机与叶片分割
 
 独立测试相机只用于采集训练数据和离线观察，不用于真实抓叶坐标。它直接固定在
 植物正上方 `x=0.85, y=0.0, z=1.35` 并垂直向下拍摄，不随机械臂运动，也不会
@@ -492,7 +502,7 @@ python -m leaf_extraction.segmentation_preview --ros-args \
 `gripper` 偏移。独立相机预览仍使用 `segmentation_preview` 和
 `/perception_test_camera/*`，两条用途不同的话题不要互换。
 
-#### 7.3.1 重新生成仿真数据并微调
+#### 6.3.1 重新生成仿真数据并微调
 
 训练标签来自原始 OBJ 中四个独立的叶片连通网格，不使用低置信度模型预测作为伪标签。采集时正常植物和
 隐藏的彩色标签植物交替出现在同一位姿，质量门槛要求每张图必须提取到四个叶片实例。终端一仍运行主仿真，
@@ -532,15 +542,15 @@ python -m leaf_extraction.train_sim_model \
 `0.969`。训练集只覆盖当前 Gazebo 低面植物，因此 `citrus.pt` 仍被保留作为真实叶片实验的基线，
 不能用仿真验证集指标推断真实果园精度。
 
-### 7.4 子模块提示 `not our ref`
+### 6.4 子模块提示 `not our ref`
 
 这通常说明父仓库固定到了远端已经无法取得的提交。不要反复执行同一条 `git submodule update`；应先核对 `.gitmodules` URL 和父仓库记录的 gitlink，再切换到远端实际存在、与 Humble 兼容的提交。
 
-### 7.5 构建模式冲突
+### 6.5 构建模式冲突
 
 普通构建和 `--symlink-install` 会让同一个 Python 包生成不同类型的路径。出现 `existing path cannot be removed: Is a directory` 时，只清理出错包对应的 `build/<包名>` 和 `install/<包名>` 后重建，不要无差别删除整个工作区。
 
-### 7.6 画圆结束后机械臂或夹爪 TF 消失、跳变
+### 6.6 画圆结束后机械臂或夹爪 TF 消失、跳变
 
 Gazebo 联动模式下，圆轨迹节点只发布控制器命令，动态 TF 来自 `robot_state_publisher`，`/joint_states` 来自 `joint_state_broadcaster`。如果 `/joint_states` 有多个发布者，通常是误启动了第二套仿真，应先关闭重复节点：
 
@@ -554,7 +564,7 @@ ros2 topic info /joint_states --verbose
 ros2 run tf2_ros tf2_echo base gripper
 ```
 
-## 8. 参考文献
+## 7. 参考文献
 
 Mortazavi, M., Cappelleri, D. J., Ehsani, R. (2025). *RoMu4o: A Robotic Manipulation Unit for Orchard Operations Automating Proximal Hyperspectral Leaf Sensing*. arXiv:2409.19786.
 
