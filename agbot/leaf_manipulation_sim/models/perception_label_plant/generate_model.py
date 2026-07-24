@@ -18,7 +18,7 @@ COLORS = [
     (1.0, 0.0, 1.0),
     (0.0, 1.0, 1.0),
     (1.0, 1.0, 0.0),
-    (0.15, 0.45, 1.0),
+    (0.0, 0.0, 1.0),
 ]
 
 
@@ -135,7 +135,9 @@ def write_sdf():
   <author>
     <name>RoMu4o simulation</name>
   </author>
-  <description>Four uniquely colored leaf meshes for synthetic labels.</description>
+  <description>
+    Four uniquely colored leaf meshes for synthetic labels.
+  </description>
 </model>
 '''
     (MODEL_DIR / 'model.config').write_text(config)

@@ -61,9 +61,9 @@
           </mesh>
         </geometry>
         <material>
-          <ambient>0.15 0.45 1.0 1</ambient>
-          <diffuse>0.15 0.45 1.0 1</diffuse>
-          <emissive>0.15 0.45 1.0 1</emissive>
+          <ambient>0.0 0.0 1.0 1</ambient>
+          <diffuse>0.0 0.0 1.0 1</diffuse>
+          <emissive>0.0 0.0 1.0 1</emissive>
           <specular>0 0 0 1</specular>
         </material>
       </visual>
