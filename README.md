@@ -11,6 +11,7 @@
    3. [指定位姿抓取演示](#43-指定位姿抓取演示)
    4. [已标定叶片轻夹演示](#44-已标定叶片轻夹演示)
    5. [MoveIt Task Constructor 候选解与评分](#45-moveit-task-constructor-候选解与评分)
+   6. [交互式叶片感知与完整夹叶规划 Demo](#46-交互式叶片感知与完整夹叶规划-demo)
 5. [整机、传感器与导航入口](#5-整机传感器与导航入口)
 6. [TM5-900 实机和驱动 demo](#6-tm5-900-实机和驱动-demo)
 7. [常见问题](#7-常见问题)
@@ -248,33 +249,12 @@ ros2 launch leaf_manipulation_sim run_leaf_mtc_demo.launch.py
 `move_group` 禁止轨迹执行，因此该面板只用于比较和预览；确认候选位姿后，
 使用 `run_leaf_pinch_demo.launch.py` 执行已经验证过的轻夹动作。
 
-## 5. 整机、传感器与导航入口
+### 4.6 交互式叶片感知与完整夹叶规划 Demo
 
-启动传感器，可按需关闭不使用的设备：
-
-```bash
-ros2 launch robot_bringup sensors.launch.py \
-  imu:=true gnss:=true lidar2d:=true realsense:=true encoders:=true
-```
-
-启动整机底层、定位、导航或 SLAM：
-
-```bash
-ros2 launch robot_bringup bringup.launch.py
-ros2 launch robot_bringup localization.launch.py
-ros2 launch robot_bringup navigation.launch.py
-ros2 launch robot_bringup slam.launch.py
-```
-
-只启动机械臂侧传感器：
-
-```bash
-ros2 launch robot_bringup sensors_arm.launch.py
-```
-
-日常抓叶使用手腕 D435，不使用独立训练相机。仿真已经把 Gazebo 的
-X-forward 点云转换成 REP-103 的 Z-forward 光学点云，并由 tf2 按采样时间将
-叶片中心和姿态转换到 `world`；不要再添加旧版手写的相机到夹爪偏移。
+日常抓叶仿真使用机械臂手腕上的 D435，不使用独立训练相机。仿真已经把
+Gazebo 的 X-forward 点云转换成 REP-103 的 Z-forward 光学点云，并由 tf2
+按采样时间将叶片中心和姿态转换到 `world`；不要再添加旧版手写的相机到
+夹爪偏移。
 
 终端一启动仿真和 RViz：
 
@@ -316,6 +296,30 @@ ros2 topic echo /leaf_perception/markers --once
 三处 `frame_id` 应分别落在 TF 树内，最终目标应为 `world`。原始 Fortress
 点云仅作为内部输入保留在 `/camera/depth/color/points_gz`，不应直接交给
 感知节点。
+
+## 5. 整机、传感器与导航入口
+
+启动传感器，可按需关闭不使用的设备：
+
+```bash
+ros2 launch robot_bringup sensors.launch.py \
+  imu:=true gnss:=true lidar2d:=true realsense:=true encoders:=true
+```
+
+启动整机底层、定位、导航或 SLAM：
+
+```bash
+ros2 launch robot_bringup bringup.launch.py
+ros2 launch robot_bringup localization.launch.py
+ros2 launch robot_bringup navigation.launch.py
+ros2 launch robot_bringup slam.launch.py
+```
+
+只启动机械臂侧传感器：
+
+```bash
+ros2 launch robot_bringup sensors_arm.launch.py
+```
 
 ## 6. TM5-900 实机和驱动 demo
 
