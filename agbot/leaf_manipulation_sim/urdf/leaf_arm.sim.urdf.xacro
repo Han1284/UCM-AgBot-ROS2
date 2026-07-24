@@ -41,10 +41,11 @@
   </joint>
 
   <!--
-    Align the D435 with TMvision and place its depth-camera frame 15 mm in
-    front of the native lens.  The offset below compensates for the official
-    D435 model's bottom-screw-to-camera-frame transform, leaving the detailed
-    D435 body about 2.5 mm in front of the TMvision lens surface.
+    Mount the D435 sideways and centre its body on the TMvision side face.
+    The D435 macro is anchored at its bottom screw rather than at the body
+    centre, so the 12.5 mm Y offset below keeps the body centred while applying
+    the 90 degree in-plane rotation.  Its optical +X axis still points downward
+    in the ready1 arm pose.
   -->
   <xacro:sensor_d435
     parent="link_6"
@@ -52,8 +53,8 @@
     use_nominal_extrinsics="true"
     add_plug="false"
     use_mesh="true">
-    <!-- Equivalent to xyz="0.0044 -0.0175 -0.0125" in TMvision frame. -->
-    <origin xyz="0.0 0.1118 0.02373" rpy="0 -1.5707 -1.5707"/>
+    <origin xyz="0.0 0.1243 0.02373"
+            rpy="1.5708 -1.5708 0.0"/>
   </xacro:sensor_d435>
   <gazebo reference="camera_joint">
     <preserveFixedJoint>true</preserveFixedJoint>

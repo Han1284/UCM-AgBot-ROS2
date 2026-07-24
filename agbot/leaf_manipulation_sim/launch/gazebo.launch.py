@@ -1,4 +1,6 @@
+import math
 import os
+import xml.etree.ElementTree as ET
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
@@ -37,13 +39,32 @@ def generate_launch_description():
     # Keep the official Collada mesh in robot_description for RViz.  Fortress's
     # Ogre2 path renders that legacy DAE incorrectly, so only the entity sent to
     # Gazebo uses an Assimp-triangulated OBJ generated from the same geometry.
+    #
+    # Assimp bakes the DAE's Z_UP-to-OBJ axis conversion into the OBJ vertices.
+    # Compensate that conversion on the Gazebo visual only; changing the camera
+    # joint would also rotate the already-correct optical frames and RGB image.
     gazebo_robot_description = xacro.process_file(urdf_path).toxml()
     d435_dae = 'package://realsense2_description/meshes/d435.dae'
     d435_obj = 'package://leaf_manipulation_sim/meshes/d435_fortress.obj'
-    if gazebo_robot_description.count(d435_dae) != 1:
+    gazebo_robot = ET.fromstring(gazebo_robot_description)
+    camera_visual = gazebo_robot.find("./link[@name='camera_link']/visual")
+    if camera_visual is None:
+        raise RuntimeError('Could not find camera_link visual in robot URDF')
+    camera_mesh = camera_visual.find('./geometry/mesh')
+    camera_origin = camera_visual.find('./origin')
+    if (camera_mesh is None or camera_mesh.get('filename') != d435_dae
+            or camera_origin is None):
         raise RuntimeError('Expected exactly one D435 visual mesh in robot URDF')
-    gazebo_robot_description = gazebo_robot_description.replace(
-        d435_dae, d435_obj)
+    camera_mesh.set('filename', d435_obj)
+    camera_visual_rpy = [float(value)
+                         for value in camera_origin.get('rpy', '').split()]
+    if len(camera_visual_rpy) != 3:
+        raise RuntimeError('Expected an rpy on the D435 visual origin')
+    camera_visual_rpy[0] += math.pi / 2.0
+    camera_origin.set(
+        'rpy', ' '.join(f'{value:.16g}' for value in camera_visual_rpy))
+    gazebo_robot_description = ET.tostring(
+        gazebo_robot, encoding='unicode')
 
     resource_path = os.pathsep.join([
         os.path.join(pkg_sim, 'models'),

@@ -39,7 +39,9 @@ sudo apt install -y \
   ros-humble-ros-gz \
   ros-humble-gz-ros2-control \
   ros-humble-joint-state-broadcaster \
-  ros-humble-position-controllers
+  ros-humble-position-controllers \
+  ros-humble-moveit-task-constructor-core \
+  ros-humble-moveit-task-constructor-visualization
 ```
 
 然后在工作区根目录安装能够由 rosdep 解析的其余依赖：
@@ -174,6 +176,53 @@ ros2 launch leaf_manipulation_sim run_pose_grasp_demo.launch.py \
 ```bash
 ros2 run leaf_manipulation_sim prompt_pose_grasp_demo
 ```
+
+### 已标定叶片轻夹演示
+
+这个入口使用第 1 片叶子的外侧第 5 段碰撞盒作为目标。夹爪闭合轴与叶面法向
+对齐，运动过程中保持 `link_6`、夹爪基座和 D435 不接触叶片。它只执行动作，
+不会启动第二份 Gazebo 或 RViz。
+
+先在终端一启动仿真：
+
+```bash
+ros2 launch leaf_manipulation_sim simulation.launch.py \
+  gui:=true rviz:=true
+```
+
+等待三个控制器均为 `active` 后，在终端二单独执行：
+
+```bash
+ros2 launch leaf_manipulation_sim run_leaf_pinch_demo.launch.py
+```
+
+演示会依次张开夹爪、移动到已标定叶尖位姿、闭合一次、重新张开并返回
+`ready1`，完成后自动退出。可通过 `grasp_hold_sec:=3.0` 调整闭合保持时间。
+
+### MoveIt Task Constructor 候选解与评分
+
+RViz 配置中已经加入 MoveIt 2 官方 MTC 的 `Motion Planning Tasks` 面板。它使用
+与轻夹演示相同的叶片 1 第 5 段目标位姿，并显示当前状态、无碰撞接近规划、
+IK 候选解、失败解和对应 cost。这个入口只规划和发布预览，不会自动驱动
+Gazebo 中的机械臂。
+
+仍然在终端一单独启动仿真：
+
+```bash
+ros2 launch leaf_manipulation_sim simulation.launch.py \
+  gui:=true rviz:=true
+```
+
+等待机械臂状态稳定后，在终端二生成候选解：
+
+```bash
+ros2 launch leaf_manipulation_sim run_leaf_mtc_demo.launch.py
+```
+
+在 RViz 的 `Motion Planning Tasks` 面板中展开任务阶段，右侧列表按 cost 排序。
+点击某个 cost 行即可预览对应轨迹。当前 Gazebo 使用位置组控制器，而且
+`move_group` 禁止轨迹执行，因此该面板只用于比较和预览；确认候选位姿后，
+使用 `run_leaf_pinch_demo.launch.py` 执行已经验证过的轻夹动作。
 
 ## 整机、传感器与导航入口
 

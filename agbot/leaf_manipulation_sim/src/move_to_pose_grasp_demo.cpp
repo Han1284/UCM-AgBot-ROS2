@@ -28,6 +28,8 @@ constexpr double kDefaultMoveScale = 0.2;
 constexpr double kDefaultTargetOffsetY = -0.10;
 constexpr double kDefaultTargetOffsetZ = -0.05;
 constexpr double kDefaultReplayDurationSec = 3.0;
+constexpr double kDefaultGraspHoldSec = 1.0;
+constexpr double kDefaultTargetSettleSec = 2.0;
 
 geometry_msgs::msg::Pose eigenToPose(const Eigen::Isometry3d& transform)
 {
@@ -83,6 +85,10 @@ public:
     target_offset_y_ = getOrDeclareParameter("target_offset_y", kDefaultTargetOffsetY);
     target_offset_z_ = getOrDeclareParameter("target_offset_z", kDefaultTargetOffsetZ);
     replay_duration_sec_ = getOrDeclareParameter("replay_duration_sec", kDefaultReplayDurationSec);
+    grasp_hold_sec_ = getOrDeclareParameter("grasp_hold_sec", kDefaultGraspHoldSec);
+    target_settle_sec_ = getOrDeclareParameter("target_settle_sec", kDefaultTargetSettleSec);
+    dry_run_ = getOrDeclareParameter("dry_run", false);
+    hold_after_run_ = getOrDeclareParameter("hold_after_run", true);
 
     state_names_ = {"joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6", "finger_joint"};
     state_positions_ = {0.0, 0.0, 1.5708, 0.0, 1.5708, 0.0, finger_open_};
@@ -120,6 +126,15 @@ public:
     if (!target_arm_positions) {
       return false;
     }
+    if (dry_run_) {
+      RCLCPP_INFO(
+        node_->get_logger(),
+        "IK 校验通过，目标位姿 [%.3f, %.3f, %.3f] 可达；dry_run 不发送运动指令",
+        target_pose.position.x,
+        target_pose.position.y,
+        target_pose.position.z);
+      return true;
+    }
     RCLCPP_INFO(
       node_->get_logger(),
       "开始执行目标位姿 [%.3f, %.3f, %.3f]，运动时长 %.3f 秒",
@@ -128,10 +143,16 @@ public:
       target_pose.position.z,
       replay_duration_sec_);
     replayArmMotion(ready1_arm_positions_, *target_arm_positions, replay_duration_sec_);
+    RCLCPP_INFO(node_->get_logger(), "等待机械臂在夹持位姿稳定 %.2f 秒", target_settle_sec_);
+    rclcpp::sleep_for(std::chrono::duration_cast<std::chrono::nanoseconds>(
+      std::chrono::duration<double>(target_settle_sec_)));
 
     if (!animateGripper(finger_closed_, 800ms, "夹爪闭合")) {
       return false;
     }
+    RCLCPP_INFO(node_->get_logger(), "保持夹持 %.2f 秒", grasp_hold_sec_);
+    rclcpp::sleep_for(std::chrono::duration_cast<std::chrono::nanoseconds>(
+      std::chrono::duration<double>(grasp_hold_sec_)));
     if (!animateGripper(finger_open_, 800ms, "夹爪张开")) {
       return false;
     }
@@ -395,6 +416,10 @@ private:
   double target_offset_y_;
   double target_offset_z_;
   double replay_duration_sec_;
+  double grasp_hold_sec_;
+  double target_settle_sec_;
+  bool dry_run_;
+  bool hold_after_run_;
   nav_msgs::msg::Path current_path_;
   std::optional<geometry_msgs::msg::PoseStamped> last_path_pose_;
 };
@@ -412,7 +437,11 @@ int main(int argc, char* argv[])
 
   MoveToPoseGraspDemo demo(node);
   const bool ok = demo.run();
-  if (ok) {
+  bool dry_run = false;
+  bool hold_after_run = true;
+  node->get_parameter("dry_run", dry_run);
+  node->get_parameter("hold_after_run", hold_after_run);
+  if (ok && !dry_run && hold_after_run) {
     RCLCPP_INFO(
       node->get_logger(),
       "保持最终机械臂与夹爪关节状态；按 Ctrl+C 结束");

@@ -17,6 +17,9 @@
   <xacro:macro name="d435_gz_rgbd_camera" params="parent_link:='camera_bottom_screw_frame'">
     <gazebo reference="${parent_link}">
       <sensor name="d435_depth_camera" type="rgbd_camera">
+        <!-- Flip the rendered image about the optical axis without moving the
+             D435 body, collision geometry, or ROS optical frames. -->
+        <pose>0 0 0 3.141592653589793 0 0</pose>
         <always_on>true</always_on>
         <update_rate>10.0</update_rate>
         <visualize>false</visualize>

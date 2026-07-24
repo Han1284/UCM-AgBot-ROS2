@@ -109,6 +109,12 @@ install(PROGRAMS
   RENAME leaf_grasp_demo
 )
 
+install(PROGRAMS
+  leaf_manipulation_sim/leaf_mtc_pinch_demo.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME leaf_mtc_pinch_demo
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()

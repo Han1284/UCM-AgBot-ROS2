@@ -41,6 +41,7 @@ def generate_launch_description():
         'target_offset_x', 'target_offset_y', 'target_offset_z',
         'finger_open', 'finger_closed',
         'velocity_scale', 'acceleration_scale', 'replay_duration_sec',
+        'grasp_hold_sec', 'target_settle_sec', 'dry_run', 'hold_after_run',
     ]
     defaults = {
         'target_x': 'nan',
@@ -57,6 +58,10 @@ def generate_launch_description():
         'velocity_scale': '0.2',
         'acceleration_scale': '0.2',
         'replay_duration_sec': '3.0',
+        'grasp_hold_sec': '1.0',
+        'target_settle_sec': '2.0',
+        'dry_run': 'false',
+        'hold_after_run': 'true',
     }
 
     launch_actions = [
