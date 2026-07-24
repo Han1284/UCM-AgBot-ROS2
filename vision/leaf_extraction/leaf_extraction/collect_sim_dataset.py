@@ -72,13 +72,18 @@ def set_entity_pose(name, position, quaternion=(0.0, 0.0, 0.0, 1.0)):
         '--req',
         request,
     ]
-    result = subprocess.run(
-        command, check=True, capture_output=True, text=True
-    )
-    if 'true' not in result.stdout.lower():
-        raise RuntimeError(
-            f'Gazebo rejected pose update for {name}: {result.stdout}'
+    last_output = ''
+    for _ in range(5):
+        result = subprocess.run(
+            command, check=False, capture_output=True, text=True
         )
+        last_output = (result.stdout + result.stderr).strip()
+        if result.returncode == 0 and 'true' in result.stdout.lower():
+            return
+        time.sleep(0.3)
+    raise RuntimeError(
+        f'Gazebo rejected pose update for {name}: {last_output}'
+    )
 
 
 class FrameReceiver(Node):
