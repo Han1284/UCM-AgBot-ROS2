@@ -18,9 +18,11 @@ def generate_launch_description():
     # closing axis with the leaf normal and keeps link_6 and the D435 clear of
     # the plant.  Coordinates are expressed in the robot base frame.
     leaf_target = {
-        'target_x': '0.7093',
-        'target_y': '-0.2403',
-        'target_z': '0.5064',
+        'target_x': '0.7090',
+        'target_y': '-0.2410',
+        # The C++ demo accepts base-frame coordinates; base is 0.05 m above
+        # world, while the calibrated leaf center is world z=0.529 m.
+        'target_z': '0.4790',
         'target_roll': '1.570796',
         'target_pitch': '-1.543496',
         'target_yaw': '1.119393',
@@ -37,7 +39,7 @@ def generate_launch_description():
             launch_arguments={
                 **leaf_target,
                 'finger_open': '0.10',
-                'finger_closed': '0.785',
+                'finger_closed': '0.680',
                 'replay_duration_sec': replay_duration,
                 'target_settle_sec': settle_duration,
                 'grasp_hold_sec': grasp_hold_duration,

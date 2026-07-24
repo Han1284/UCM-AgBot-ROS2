@@ -24,18 +24,32 @@ def generate_launch_description():
 
     urdf_path = os.path.join(pkg_sim, 'urdf', 'leaf_arm.sim.urdf.xacro')
     robot_description = {'robot_description': Command(['xacro ', urdf_path])}
+    semantic_xml = open(
+        os.path.join(
+            get_package_share_directory('tm_moveit_config_tm5-900'),
+            'config',
+            'tm5-900.srdf',
+        ),
+        encoding='utf-8',
+    ).read().replace(
+        '<virtual_joint name="virtual_joint" type="fixed" '
+        'parent_frame="world" child_link="base" />',
+        '',
+    )
+    semantic_xml = semantic_xml.replace(
+        '</robot>',
+        (
+            '    <disable_collisions link1="link_6" link2="camera_link" '
+            'reason="RigidlyMounted" />\n'
+            '    <disable_collisions link1="pedestal_link" link2="base" '
+            'reason="RigidlyMounted" />\n'
+            '    <disable_collisions link1="pedestal_link" link2="link_0" '
+            'reason="RigidlyMounted" />\n'
+            '</robot>'
+        ),
+    )
     robot_description_semantic = {
-        'robot_description_semantic': open(
-            os.path.join(
-                get_package_share_directory('tm_moveit_config_tm5-900'),
-                'config',
-                'tm5-900.srdf',
-            ),
-            encoding='utf-8',
-        ).read().replace(
-            '<virtual_joint name="virtual_joint" type="fixed" parent_frame="world" child_link="base" />',
-            '',
-        )
+        'robot_description_semantic': semantic_xml
     }
     kinematics_yaml = load_yaml(
         'tm_moveit_config_tm5-900', 'config/kinematics.yaml')
@@ -102,6 +116,13 @@ def generate_launch_description():
             name='plant_marker_publisher',
             output='screen',
             condition=IfCondition(rviz),
+            parameters=[{'use_sim_time': True}],
+        ),
+        Node(
+            package='leaf_manipulation_sim',
+            executable='planning_scene_initializer',
+            name='leaf_planning_scene_initializer',
+            output='screen',
             parameters=[{'use_sim_time': True}],
         ),
         IncludeLaunchDescription(

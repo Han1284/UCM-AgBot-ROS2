@@ -29,23 +29,41 @@ def quaternion_from_rpy(roll, pitch, yaw):
     )
 
 
+def gripper_goal(position):
+    return {
+        'finger_joint': position,
+        'left_inner_knuckle_joint': -position,
+        'left_inner_finger_joint': position,
+        'right_outer_knuckle_joint': -position,
+        'right_inner_knuckle_joint': -position,
+        'right_inner_finger_joint': position,
+    }
+
+
+def arm_home_goal():
+    return {f'joint_{index}': 0.0 for index in range(1, 7)}
+
+
 def make_task(node):
-    """Create the official CurrentState/Connect/ComputeIK MTC hierarchy."""
+    """Create the complete approach/pinch/release/return MTC hierarchy."""
     arm_group = 'tmr_arm'
+    gripper_group = 'rg2_gripper'
     task = core.Task()
-    task.name = 'TM5-900 leaf pinch candidates'
+    task.name = 'TM5-900 complete leaf pinch task'
     task.loadRobotModel(node)
 
     current = stages.CurrentState('1. Current robot state')
     current.timeout = 5.0
     task.add(current)
 
-    fixed_mount = stages.ModifyPlanningScene(
-        '2. Ignore rigid mount overlaps')
-    fixed_mount.allowCollisions('link_6', 'camera_link', True)
-    fixed_mount.allowCollisions('pedestal_link', 'base', True)
-    fixed_mount.allowCollisions('pedestal_link', 'link_0', True)
-    task.add(fixed_mount)
+    joint_planner = core.JointInterpolationPlanner()
+    joint_planner.max_velocity_scaling_factor = 0.2
+    joint_planner.max_acceleration_scaling_factor = 0.2
+
+    open_gripper = stages.MoveTo('2. Open gripper', joint_planner)
+    open_gripper.group = gripper_group
+    open_gripper.setGoal(gripper_goal(0.10))
+    task.add(open_gripper)
 
     planner = core.PipelinePlanner(node)
     planner.planner = 'RRTConnect'
@@ -59,9 +77,9 @@ def make_task(node):
     task.add(connect)
 
     target = PoseStamped(
-        header=Header(frame_id='base'),
+        header=Header(frame_id='world'),
         pose=Pose(
-            position=Point(x=0.7093, y=-0.2403, z=0.5064),
+            position=Point(x=0.7090, y=-0.2410, z=0.5290),
             orientation=quaternion_from_rpy(
                 1.570796,
                 -1.543496,
@@ -70,11 +88,15 @@ def make_task(node):
         ),
     )
 
-    generator = stages.GeneratePose('4. Leaf 1 segment 5 target')
-    generator.setMonitoredStage(task['2. Ignore rigid mount overlaps'])
+    generator = stages.GeneratePose('4. Leaf 1 segment 5 target pose')
+    generator.setMonitoredStage(
+        task['2. Open gripper'])
     generator.pose = target
 
-    compute_ik = stages.ComputeIK('5. IK candidates and ranking', generator)
+    compute_ik = stages.ComputeIK(
+        '5. Solve target pose IK and rank candidates',
+        generator,
+    )
     compute_ik.group = arm_group
     compute_ik.ik_frame = PoseStamped(
         header=Header(frame_id='gripper'),
@@ -88,6 +110,32 @@ def make_task(node):
         ['target_pose'],
     )
     task.add(compute_ik)
+
+    close_gripper = stages.MoveTo(
+        '6. Close to 1 mm clearance per side',
+        joint_planner,
+    )
+    close_gripper.group = gripper_group
+    close_gripper.setGoal(gripper_goal(0.680))
+    task.add(close_gripper)
+
+    release_gripper = stages.MoveTo('7. Re-open gripper', joint_planner)
+    release_gripper.group = gripper_group
+    release_gripper.setGoal(gripper_goal(0.10))
+    task.add(release_gripper)
+
+    return_planner = core.PipelinePlanner(node)
+    return_planner.planner = 'RRTConnect'
+    return_planner.max_velocity_scaling_factor = 0.2
+    return_planner.max_acceleration_scaling_factor = 0.2
+    return_home = stages.MoveTo(
+        '8. Return arm to vertical home',
+        return_planner,
+    )
+    return_home.group = arm_group
+    return_home.timeout = 1.0
+    return_home.setGoal(arm_home_goal())
+    task.add(return_home)
     return task
 
 

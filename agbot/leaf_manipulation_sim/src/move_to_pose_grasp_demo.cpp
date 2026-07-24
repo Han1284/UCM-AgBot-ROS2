@@ -91,8 +91,8 @@ public:
     hold_after_run_ = getOrDeclareParameter("hold_after_run", true);
 
     state_names_ = {"joint_1", "joint_2", "joint_3", "joint_4", "joint_5", "joint_6", "finger_joint"};
-    state_positions_ = {0.0, 0.0, 1.5708, 0.0, 1.5708, 0.0, finger_open_};
-    ready1_arm_positions_ = {0.0, 0.0, 1.5708, 0.0, 1.5708, 0.0};
+    state_positions_ = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, finger_open_};
+    home_arm_positions_ = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
     state_timer_ = node_->create_wall_timer(
       std::chrono::duration_cast<std::chrono::nanoseconds>(
         std::chrono::duration<double>(1.0 / kJointPublishRate)),
@@ -142,7 +142,7 @@ public:
       target_pose.position.y,
       target_pose.position.z,
       replay_duration_sec_);
-    replayArmMotion(ready1_arm_positions_, *target_arm_positions, replay_duration_sec_);
+    replayArmMotion(home_arm_positions_, *target_arm_positions, replay_duration_sec_);
     RCLCPP_INFO(node_->get_logger(), "等待机械臂在夹持位姿稳定 %.2f 秒", target_settle_sec_);
     rclcpp::sleep_for(std::chrono::duration_cast<std::chrono::nanoseconds>(
       std::chrono::duration<double>(target_settle_sec_)));
@@ -157,17 +157,17 @@ public:
       return false;
     }
 
-    RCLCPP_INFO(node_->get_logger(), "开始返回初始姿态 ready1");
-    replayArmMotion(*target_arm_positions, ready1_arm_positions_, replay_duration_sec_);
+    RCLCPP_INFO(node_->get_logger(), "开始返回竖直初始姿态 home");
+    replayArmMotion(*target_arm_positions, home_arm_positions_, replay_duration_sec_);
     {
       std::lock_guard<std::mutex> lock(state_mutex_);
       state_positions_ = {
-        ready1_arm_positions_[0],
-        ready1_arm_positions_[1],
-        ready1_arm_positions_[2],
-        ready1_arm_positions_[3],
-        ready1_arm_positions_[4],
-        ready1_arm_positions_[5],
+        home_arm_positions_[0],
+        home_arm_positions_[1],
+        home_arm_positions_[2],
+        home_arm_positions_[3],
+        home_arm_positions_[4],
+        home_arm_positions_[5],
         finger_open_,
       };
     }
@@ -269,8 +269,8 @@ private:
     const std::vector<double>& target_positions,
     double duration_sec)
   {
-    if (start_positions.size() != ready1_arm_positions_.size() ||
-      target_positions.size() != ready1_arm_positions_.size())
+    if (start_positions.size() != home_arm_positions_.size() ||
+      target_positions.size() != home_arm_positions_.size())
     {
       return;
     }
@@ -399,7 +399,7 @@ private:
   moveit::core::RobotModelPtr robot_model_;
   std::vector<std::string> state_names_;
   std::vector<double> state_positions_;
-  std::vector<double> ready1_arm_positions_;
+  std::vector<double> home_arm_positions_;
   std::mutex state_mutex_;
   rclcpp::TimerBase::SharedPtr state_timer_;
   double move_scale_;

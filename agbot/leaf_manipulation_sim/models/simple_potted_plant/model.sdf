@@ -24,8 +24,11 @@
       </visual>
 
       <collision name="pot_collision">
-        <pose>0 0 0.08 0 0 0</pose>
-        <geometry><cylinder><radius>0.12</radius><length>0.16</length></cylinder></geometry>
+        <!-- The pot mesh spans z=0.00001..0.23186 m after its visual
+             transform. Match those vertical bounds instead of ending 7.2 cm
+             below the visible rim. -->
+        <pose>0 0 0.116 0 0 0</pose>
+        <geometry><cylinder><radius>0.12</radius><length>0.232</length></cylinder></geometry>
         <surface>
           <friction><ode><mu>0.8</mu><mu2>0.8</mu2></ode></friction>
           <contact><ode><kp>1000000</kp><kd>10</kd><max_vel>0.01</max_vel><min_depth>0.001</min_depth></ode></contact>

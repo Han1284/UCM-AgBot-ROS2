@@ -26,7 +26,9 @@ class InitialControllerCommands(Node):
             return False
 
         arm = Float64MultiArray()
-        arm.data = [0.0, 0.0, 1.5708, 0.0, 1.5708, 0.0]
+        # SRDF "home": the TM5-900 is vertical, matching the robot model's
+        # zero/default state in both Gazebo and RViz.
+        arm.data = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         gripper = Float64MultiArray()
         finger_position = 0.10
         gripper.data = [
@@ -42,7 +44,7 @@ class InitialControllerCommands(Node):
             self.arm_pub.publish(arm)
             self.gripper_pub.publish(gripper)
             rclpy.spin_once(self, timeout_sec=1.0 / 30.0)
-        self.get_logger().info('Initial ready1 controller commands sent')
+        self.get_logger().info('Initial vertical home controller commands sent')
         return True
 
 

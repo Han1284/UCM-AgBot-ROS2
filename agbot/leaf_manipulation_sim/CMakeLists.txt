@@ -98,6 +98,12 @@ install(PROGRAMS
 )
 
 install(PROGRAMS
+  leaf_manipulation_sim/planning_scene_initializer.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME planning_scene_initializer
+)
+
+install(PROGRAMS
   leaf_manipulation_sim/contact_bridge_adapter.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME contact_bridge_adapter

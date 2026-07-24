@@ -197,14 +197,21 @@ ros2 launch leaf_manipulation_sim run_leaf_pinch_demo.launch.py
 ```
 
 演示会依次张开夹爪、移动到已标定叶尖位姿、闭合一次、重新张开并返回
-`ready1`，完成后自动退出。可通过 `grasp_hold_sec:=3.0` 调整闭合保持时间。
+竖直 `home`，完成后自动退出。可通过 `grasp_hold_sec:=3.0` 调整闭合保持时间。
 
 ### MoveIt Task Constructor 候选解与评分
 
-RViz 配置中已经加入 MoveIt 2 官方 MTC 的 `Motion Planning Tasks` 面板。它使用
-与轻夹演示相同的叶片 1 第 5 段目标位姿，并显示当前状态、无碰撞接近规划、
-IK 候选解、失败解和对应 cost。这个入口只规划和发布预览，不会自动驱动
-Gazebo 中的机械臂。
+RViz 配置中已经加入 MoveIt 2 官方 MTC 的 `Motion Planning Tasks` 面板。
+仿真启动时会读取 Gazebo 使用的 `simple_potted_plant/model.sdf`，将花盆和
+20 个叶片薄盒按 `leaf_bench.world` 中的植物位姿预先加入 MoveIt
+PlanningScene，因此这些场景初始化操作不会占用 MTC 主任务树。
+
+完整任务依次规划：张开夹爪、无碰撞接近叶片、闭合夹爪、重新张开夹爪、
+返回竖直 `home`。只有目标位姿需要 IK；夹爪开合和返回 `home` 是明确的
+关节空间目标，也会各自产生可预览轨迹。叶片保持为正常碰撞对象，不再
+通过允许碰撞来让夹爪穿过薄盒。夹持目标位姿位于叶片厚度中心，闭合角
+保留两侧各约 1 mm 间隙，用于模拟接触但不继续挤压叶片。这个入口只规划
+和发布预览，不会自动驱动 Gazebo 中的机械臂。
 
 仍然在终端一单独启动仿真：
 

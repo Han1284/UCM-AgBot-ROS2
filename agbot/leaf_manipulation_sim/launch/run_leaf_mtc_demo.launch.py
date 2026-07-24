@@ -30,6 +30,26 @@ def generate_launch_description():
         'parent_frame="world" child_link="base" />',
         '',
     )
+    semantic_xml = semantic_xml.replace(
+        '</robot>',
+        (
+            '    <group name="rg2_gripper">\n'
+            '        <joint name="finger_joint" />\n'
+            '        <joint name="left_inner_knuckle_joint" />\n'
+            '        <joint name="left_inner_finger_joint" />\n'
+            '        <joint name="right_outer_knuckle_joint" />\n'
+            '        <joint name="right_inner_knuckle_joint" />\n'
+            '        <joint name="right_inner_finger_joint" />\n'
+            '    </group>\n'
+            '    <disable_collisions link1="link_6" link2="camera_link" '
+            'reason="RigidlyMounted" />\n'
+            '    <disable_collisions link1="pedestal_link" link2="base" '
+            'reason="RigidlyMounted" />\n'
+            '    <disable_collisions link1="pedestal_link" link2="link_0" '
+            'reason="RigidlyMounted" />\n'
+            '</robot>'
+        ),
+    )
     robot_description_semantic = {
         'robot_description_semantic': semantic_xml
     }
