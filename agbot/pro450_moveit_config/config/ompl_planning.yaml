@@ -1,0 +1,5 @@
+planner_configs:
+  RRTConnectkConfigDefault:
+    type: geometric::RRTConnect
+pro450_arm:
+  planner_configs: [RRTConnectkConfigDefault]
