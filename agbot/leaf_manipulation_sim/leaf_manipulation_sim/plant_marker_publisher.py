@@ -6,6 +6,8 @@ from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from visualization_msgs.msg import Marker
 
+from leaf_manipulation_sim.plant_collision_geometry import plant_model_pose
+
 
 class PlantMarkerPublisher(Node):
     def __init__(self) -> None:
@@ -27,10 +29,11 @@ class PlantMarkerPublisher(Node):
         marker.id = 0
         marker.type = Marker.MESH_RESOURCE
         marker.action = Marker.ADD
-        marker.pose.position.x = 0.85
-        marker.pose.position.y = 0.0
-        marker.pose.position.z = 0.0001
-        marker.pose.orientation.w = 1.0
+        model_position, model_rotation = plant_model_pose()
+        marker.pose.position.x = model_position[0]
+        marker.pose.position.y = model_position[1]
+        marker.pose.position.z = model_position[2] + 0.0001
+        marker.pose.orientation = model_rotation
         marker.scale.x = 0.10
         marker.scale.y = 0.10
         marker.scale.z = 0.10
@@ -46,7 +49,8 @@ class PlantMarkerPublisher(Node):
         marker.frame_locked = True
         self.publisher.publish(marker)
         if not self.published:
-            self.get_logger().info('Published potted plant marker on /plant_marker')
+            self.get_logger().info(
+                'Published potted plant marker on /plant_marker')
             self.published = True
         self.timer.cancel()
 

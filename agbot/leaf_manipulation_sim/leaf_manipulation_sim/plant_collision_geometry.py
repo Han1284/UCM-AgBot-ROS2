@@ -61,20 +61,23 @@ def parse_pose(element):
     return values[:3], quaternion_from_rpy(*values[3:])
 
 
-def plant_collision_objects():
-    """Load the exact Gazebo pot and leaf proxy geometry into MoveIt."""
+def plant_model_pose():
+    """Read the shared Gazebo/RViz/MoveIt plant pose from the world file."""
     package_share = get_package_share_directory('leaf_manipulation_sim')
     world_root = ET.parse(
         os.path.join(package_share, 'worlds', 'leaf_bench.world')).getroot()
-    model_position = None
-    model_rotation = None
     for include in world_root.findall('.//include'):
         if include.findtext('name') == PLANT_MODEL_NAME:
-            model_position, model_rotation = parse_pose(include.find('pose'))
-            break
-    if model_position is None:
-        raise RuntimeError(
-            f'Plant include {PLANT_MODEL_NAME!r} was not found in leaf_bench.world')
+            return parse_pose(include.find('pose'))
+    raise RuntimeError(
+        f'Plant include {PLANT_MODEL_NAME!r} was not found in '
+        'leaf_bench.world')
+
+
+def plant_collision_objects():
+    """Load the exact Gazebo pot and leaf proxy geometry into MoveIt."""
+    package_share = get_package_share_directory('leaf_manipulation_sim')
+    model_position, model_rotation = plant_model_pose()
 
     model_root = ET.parse(
         os.path.join(

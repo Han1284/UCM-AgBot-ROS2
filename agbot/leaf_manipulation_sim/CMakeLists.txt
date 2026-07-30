@@ -14,6 +14,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(moveit_ros_planning_interface REQUIRED)
 find_package(moveit_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 
 ament_python_install_package(${PROJECT_NAME})
 
@@ -39,9 +40,23 @@ ament_target_dependencies(move_to_pose_grasp_demo
   moveit_msgs
 )
 
+add_executable(
+  multi_view_observation_demo
+  src/multi_view_observation_demo.cpp
+)
+ament_target_dependencies(multi_view_observation_demo
+  rclcpp
+  std_msgs
+  std_srvs
+  geometry_msgs
+  moveit_ros_planning_interface
+  moveit_msgs
+)
+
 install(TARGETS
   circle_motion_demo
   move_to_pose_grasp_demo
+  multi_view_observation_demo
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -125,6 +140,18 @@ install(PROGRAMS
   leaf_manipulation_sim/leaf_mtc_pinch_demo.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME leaf_mtc_pinch_demo
+)
+
+install(PROGRAMS
+  leaf_manipulation_sim/projected_candidate_validator.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME projected_candidate_validator
+)
+
+install(PROGRAMS
+  leaf_manipulation_sim/mtc_rviz_task_cleaner.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME mtc_rviz_task_cleaner
 )
 
 install(PROGRAMS

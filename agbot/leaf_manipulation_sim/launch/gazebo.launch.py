@@ -29,6 +29,10 @@ def generate_launch_description():
     gui = LaunchConfiguration('gui')
     rviz = LaunchConfiguration('rviz')
     spawn_robot = LaunchConfiguration('spawn_robot')
+    # Isolate every launch from stale Gazebo Transport discovery state left by
+    # a previous server that did not shut down cleanly.  All Gazebo and bridge
+    # children inherit the same partition from this launch process.
+    transport_partition = f'leaf_manipulation_{os.getpid()}'
 
     urdf_path = os.path.join(pkg_sim, 'urdf', 'leaf_arm.sim.urdf.xacro')
     rviz_config = os.path.join(pkg_sim, 'rviz', 'leaf_manipulation_sim.rviz')
@@ -129,6 +133,8 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        SetEnvironmentVariable('IGN_PARTITION', transport_partition),
+        SetEnvironmentVariable('GZ_PARTITION', transport_partition),
         SetEnvironmentVariable('GZ_SIM_RESOURCE_PATH', resource_path),
         SetEnvironmentVariable('IGN_GAZEBO_RESOURCE_PATH', resource_path),
         DeclareLaunchArgument('use_sim_time', default_value='true'),

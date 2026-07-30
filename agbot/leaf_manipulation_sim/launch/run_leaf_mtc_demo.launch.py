@@ -67,7 +67,8 @@ def generate_launch_description():
         'ompl': {
             'planning_plugin': 'ompl_interface/OMPLPlanner',
             'request_adapters': (
-                'default_planner_request_adapters/AddTimeOptimalParameterization '
+                'default_planner_request_adapters/'
+                'AddTimeOptimalParameterization '
                 'default_planner_request_adapters/FixWorkspaceBounds '
                 'default_planner_request_adapters/FixStartStateBounds '
                 'default_planner_request_adapters/FixStartStateCollision '
@@ -83,12 +84,36 @@ def generate_launch_description():
             'ik_only',
             default_value='false',
             description='Stop after ranked collision-aware IK solutions'),
+        DeclareLaunchArgument(
+            'fast_candidate_timeout',
+            default_value='3.0',
+            description='Hard timeout in seconds for one point-pose check'),
+        DeclareLaunchArgument(
+            'full_task_timeout',
+            default_value='20.0',
+            description='Hard timeout in seconds for complete task planning'),
+        DeclareLaunchArgument(
+            'maximum_projection_width_ratio',
+            default_value='1.25',
+            description=(
+                'Maximum same-leaf projection distance as local width ratio')),
+        Node(
+            package='leaf_manipulation_sim',
+            executable='mtc_rviz_task_cleaner',
+            output='screen',
+        ),
         Node(
             package='leaf_manipulation_sim',
             executable='leaf_mtc_pinch_demo',
             output='screen',
             additional_env={
                 'LEAF_MTC_IK_ONLY': LaunchConfiguration('ik_only'),
+                'LEAF_MTC_FAST_TIMEOUT_SECONDS': LaunchConfiguration(
+                    'fast_candidate_timeout'),
+                'LEAF_MTC_FULL_TIMEOUT_SECONDS': LaunchConfiguration(
+                    'full_task_timeout'),
+                'LEAF_MTC_MAX_PROJECTION_WIDTH_RATIO': LaunchConfiguration(
+                    'maximum_projection_width_ratio'),
             },
             parameters=[
                 robot_description,

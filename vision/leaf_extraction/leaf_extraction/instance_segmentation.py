@@ -599,8 +599,13 @@ class ImageProcessor(Node):
         self.multi_pose_array_publisher.publish(leaf_pose_arrays_msg)
 
     def publish_leaf_markers(self, selected_index=None):
-        """Show terminal leaf numbers, centres and normals in RViz."""
+        """Show perceived leaf centres and normals in RViz."""
         marker_array = MarkerArray()
+        clear = Marker()
+        clear.header.frame_id = self.target_frame
+        clear.header.stamp = self.cloud_stamp
+        clear.action = Marker.DELETEALL
+        marker_array.markers.append(clear)
         transform = self.cloud_transform.transform
         target_from_camera = R.from_quat([
             transform.rotation.x,
@@ -661,24 +666,6 @@ class ImageProcessor(Node):
             normal_marker.color.b = 0.0 if selected else 1.0
             normal_marker.color.a = 1.0
             marker_array.markers.append(normal_marker)
-
-            label_marker = Marker()
-            label_marker.header = centre_marker.header
-            label_marker.ns = 'leaf_numbers'
-            label_marker.id = index
-            label_marker.type = Marker.TEXT_VIEW_FACING
-            label_marker.action = Marker.ADD
-            label_marker.pose.position.x = float(centre[0])
-            label_marker.pose.position.y = float(centre[1])
-            label_marker.pose.position.z = float(centre[2] + 0.055)
-            label_marker.pose.orientation.w = 1.0
-            label_marker.scale.z = 0.04
-            label_marker.color.r = 1.0
-            label_marker.color.g = 0.25 if selected else 1.0
-            label_marker.color.b = 0.1 if selected else 1.0
-            label_marker.color.a = 1.0
-            label_marker.text = str(index + 1)
-            marker_array.markers.append(label_marker)
 
         self.marker_publisher.publish(marker_array)
 

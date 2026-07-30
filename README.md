@@ -14,7 +14,7 @@
       2. [指定位姿抓取演示](#422-指定位姿抓取演示)
       3. [已标定叶片轻夹演示](#423-已标定叶片轻夹演示)
       4. [MoveIt Task Constructor 候选解与评分](#424-moveit-task-constructor-候选解与评分)
-      5. [交互式叶片感知与完整夹叶规划 Demo](#425-交互式叶片感知与完整夹叶规划-demo)
+      5. [多视角叶片感知与完整夹叶规划 Demo](#425-多视角叶片感知与完整夹叶规划-demo)
 5. [TM5-900 实机和驱动](#5-tm5-900-实机和驱动)
 6. [常见问题](#6-常见问题)
 7. [参考文献](#7-参考文献)
@@ -283,12 +283,11 @@ ros2 launch leaf_manipulation_sim run_leaf_mtc_demo.launch.py
 `move_group` 禁止轨迹执行，因此该面板只用于比较和预览；确认候选位姿后，
 使用 `run_leaf_pinch_demo.launch.py` 执行已经验证过的轻夹动作。
 
-#### 4.2.5 交互式叶片感知与完整夹叶规划 Demo
+#### 4.2.5 多视角叶片感知与完整夹叶规划 Demo
 
 日常抓叶仿真使用机械臂手腕上的 D435，不使用独立训练相机。仿真已经把
 Gazebo 的 X-forward 点云转换成 REP-103 的 Z-forward 光学点云，并由 tf2
-按采样时间将叶片中心和姿态转换到 `world`；不要再添加旧版手写的相机到
-夹爪偏移。
+按采样时间将每帧点云转换到 `base`；不要再添加旧版手写的相机到夹爪偏移。
 
 终端一启动仿真和 RViz：
 
@@ -299,7 +298,7 @@ source install/setup.bash
 ros2 launch leaf_manipulation_sim simulation.launch.py gui:=true rviz:=true
 ```
 
-终端二进入感知虚拟环境并启动交互式抓叶感知管线：
+终端二进入感知虚拟环境并启动自适应多视角抓叶管线：
 
 ```bash
 cd /home/han1284/projects/ros2_ws
@@ -309,14 +308,59 @@ source .venv-romu4o/bin/activate
 ros2 run leaf_manipulation_sim leaf_perception_pipeline
 ```
 
-该入口先通过 MoveIt 规划到无碰撞的 D435 俯视观察姿态，再从
-`/camera/depth/color/points` 分割叶片。终端会输出检测数量、每片叶子的
-`world` 坐标和置信度。RViz 会用同一编号显示每片叶子的中心和法向箭头；
-输入编号后，所选标记会变色并发布单片目标。随后 MoveIt Task Constructor
-规划“接近叶片、闭合到两侧各约 1 mm 间隙、张开夹爪、返回竖直
-`home`”的完整任务。Motion Planning Tasks 面板会显示带 cost 的候选解，
-点击 cost 行即可预览整段动作。该步骤只规划和可视化，不会自动驱动
-Gazebo 中的机械臂执行动作。
+管线首先从安全观察位估计冠层位置，再在冠层上方生成覆盖 `40–90°` 俯角
+的全株观察候选。候选按照植物预测可视范围、观察角度、机械臂移动距离和
+可达性排序；理想全株视角不可达时会逐步缩短拍摄距离，并保留一帧当前安全
+位图像作为兜底，因此不会卡在首帧规划阶段。
+
+首帧随后参与多视角融合。第一次观察仍以完整植物进入画面为目标；后续
+Next-Best-View 改为优先补齐历史视角中支持不足的表面体素和画框边缘叶片
+前沿，并结合视角差异、移动代价与基本画面覆盖率排序。与历史观察位置和
+角度都过近、又不能增加表面支持的候选会被过滤。程序默认执行一次全株观察
+和一次质量验证 NBV。首帧候选只用于确定第二视角应重点改善的区域，不能
+直接送入 MTC；取得第二帧后，落点必须满足两个独立视角的表面共识。如果
+此时已有至少 6 个候选并覆盖至少 2 片叶，立即进入 IK，否则继续补全 NBV，
+最多采集 5 个有效视角。
+
+各视角的 RGB-D 数据和同步 TF 在 `base` 坐标系中融合。落点必须获得至少
+两个独立视角的局部表面支持，并按平整度、动态叶缘裕量、法向质量、接近
+净空、检测置信度和叶片纵向位置评分。PCA 主轴与花盆顶面中心共同确定根端
+和远端，根部前 30% 被排除，55%–85% 为优先区域，85% 以后仍可在满足叶缘
+裕量和平整度时参与竞争。叶缘裕量由检测到的局部叶宽动态确定，所有合格
+位置进入同一候选池，不区分内部点和叶尖点。首帧全株观察还会建立固定的
+宽松冠层范围，后续误分割点不能继续把融合范围扩张到植物之外。
+
+同一感知叶片的候选会整体关联到一个仿真叶片代理，再沿各点局部感知法向
+投影到该叶片正面。投影距离上限按局部叶宽动态计算，并同时检查切向修正、
+法向一致性和投影后的纵向比例，避免同一叶片的点被分别吸附到邻叶。RViz
+的 `Ranked Landing Points` 订阅
+`/leaf_perception/projected_grasp_candidates`，只显示投影后的绿色落点和
+连续编号；编号与 MTC 日志中的 `point=N` 一致。
+
+MoveIt Task Constructor 对高分落点生成多个绕叶面法向的夹爪姿态，并执行
+裸 IK、碰撞 IK、四个叶面内正交接近方向、`0、±10、±20、±30°` 倾角、
+动态直线预抓取和夹爪闭合检查。35 mm 的 RG2 指尖标定偏置与直线接近行程
+分开计算；接近行程取局部叶宽的 50%，并限制在 25–45 mm。通过筛选的候选
+再结合感知评分与规划代价确定最终目标，并规划“接近、闭合、张开、返回
+`home`”完整任务。快速失败候选不会进入 `Motion Planning Tasks` 面板；
+规划成功时，全部完整解按 MTC cost 从低到高发布。单个快速组合超过 3 秒
+会由独立子进程硬终止，日志只显示 `[N/80]` 进度和最终分类汇总，不会再因
+某个 IK 或规划插件不响应而永久停住。
+
+进入 4/4 阶段后应等待终端出现 `Generated N ranked complete solution(s)`
+或明确的候选失败结果，再按 Ctrl+C 结束进程。
+
+可用以下接口观察多视角过程：
+
+```bash
+ros2 topic echo /leaf_perception/canopy_bounds
+ros2 topic echo /leaf_perception/observation_views
+ros2 topic echo /leaf_perception/grasp_candidates
+ros2 topic echo /leaf_perception/projected_grasp_candidates
+ros2 topic echo /target_leaves_multi_pose
+ros2 service call /leaf_perception/prepare_overview std_srvs/srv/Trigger
+ros2 service call /leaf_perception/finalize std_srvs/srv/Trigger
+```
 
 可用以下命令核查坐标链和选中目标：
 
@@ -324,12 +368,25 @@ Gazebo 中的机械臂执行动作。
 ros2 topic echo /camera/depth/color/points --once --field header
 ros2 run tf2_ros tf2_echo world camera_depth_optical_frame
 ros2 topic echo /target_leaves_multi_pose --once --field header
-ros2 topic echo /leaf_perception/markers --once
+ros2 topic echo /leaf_perception/grasp_candidates --once
 ```
 
-三处 `frame_id` 应分别落在 TF 树内，最终目标应为 `world`。原始 Fortress
+三处 `frame_id` 应分别落在 TF 树内，最终目标应为 `base`。原始 Fortress
 点云仅作为内部输入保留在 `/camera/depth/color/points_gz`，不应直接交给
 感知节点。
+
+无 GUI 验证时，将终端一的启动命令改为
+`gui:=false rviz:=false`，终端二保持不变。候选发布后可在第三个终端执行：
+
+```bash
+cd /home/han1284/projects/ros2_ws
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+ros2 run leaf_manipulation_sim projected_candidate_validator
+```
+
+校验器会检查候选数和叶片覆盖数、纵向比例、动态投影距离、关联代理表面、
+连续数字标签，以及 Marker 球心与送入 MTC 的投影后接触点是否完全一致。
 
 ## 5. TM5-900 实机和驱动
 

@@ -263,17 +263,16 @@ Visualization Manager:
       Value: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
-      Name: Perceived Leaves
+      Name: Ranked Landing Points
       Namespaces:
-        leaf_centres: true
-        leaf_normals: true
-        leaf_numbers: true
+        projected_grasp_labels: true
+        ranked_grasp_points: true
       Topic:
         Depth: 10
         Durability Policy: Transient Local
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /leaf_perception/markers
+        Value: /leaf_perception/projected_grasp_candidates
       Value: true
     - Class: rviz_default_plugins/Image
       Enabled: true

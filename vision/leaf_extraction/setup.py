@@ -28,6 +28,7 @@ setup(
     entry_points={
         'console_scripts': [
             'instance_segmentation = leaf_extraction.instance_segmentation:main',
+            'multi_view_leaf_planner = leaf_extraction.multi_view_leaf_planner:main',
             'segmentation_preview = leaf_extraction.segmentation_preview:main',
             'collect_sim_dataset = leaf_extraction.collect_sim_dataset:main',
         ],
