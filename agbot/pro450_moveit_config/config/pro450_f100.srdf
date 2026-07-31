@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <robot name="mycobot_pro_450_f100">
-  <virtual_joint name="world_joint" type="fixed" parent_frame="world" child_link="base"/>
+  <virtual_joint name="world_joint" type="fixed" parent_frame="world" child_link="base_root"/>
   <group name="pro450_arm">
-    <chain base_link="base" tip_link="link6"/>
+    <chain base_link="base" tip_link="gripper_base"/>
   </group>
   <group name="f100_gripper">
     <joint name="gripper_controller"/>
@@ -11,7 +11,7 @@
     <group name="pro450_arm"/>
     <group name="f100_gripper"/>
   </group>
-  <end_effector name="f100" parent_link="link6" group="f100_gripper" parent_group="pro450_arm"/>
+  <end_effector name="f100" parent_link="gripper_base" group="f100_gripper" parent_group="pro450_arm"/>
   <group_state name="home" group="pro450_arm">
     <joint name="joint1" value="0"/><joint name="joint2" value="0"/>
     <joint name="joint3" value="0"/><joint name="joint4" value="0"/>
@@ -25,6 +25,29 @@
   <disable_collisions link1="link3" link2="link4" reason="Adjacent"/>
   <disable_collisions link1="link4" link2="link5" reason="Adjacent"/>
   <disable_collisions link1="link5" link2="link6" reason="Adjacent"/>
+  <disable_collisions link1="link6" link2="gripper_connection" reason="Adjacent"/>
+  <disable_collisions link1="gripper_connection" link2="gripper_base" reason="Adjacent"/>
   <disable_collisions link1="gripper_base" link2="gripper_left3" reason="Adjacent"/>
   <disable_collisions link1="gripper_base" link2="gripper_right3" reason="Adjacent"/>
+  <disable_collisions link1="gripper_base" link2="gripper_left2" reason="Adjacent"/>
+  <disable_collisions link1="gripper_base" link2="gripper_right2" reason="Adjacent"/>
+  <disable_collisions link1="gripper_left3" link2="gripper_left1" reason="Adjacent"/>
+  <disable_collisions link1="gripper_right3" link2="gripper_right1" reason="Adjacent"/>
+  <disable_collisions link1="gripper_left1" link2="gripper_left2" reason="Mechanism"/>
+  <disable_collisions link1="gripper_left1" link2="gripper_left3" reason="Mechanism"/>
+  <disable_collisions link1="gripper_left2" link2="gripper_left3" reason="Mechanism"/>
+  <disable_collisions link1="gripper_right1" link2="gripper_right2" reason="Mechanism"/>
+  <disable_collisions link1="gripper_right1" link2="gripper_right3" reason="Mechanism"/>
+  <disable_collisions link1="gripper_right2" link2="gripper_right3" reason="Mechanism"/>
+  <disable_collisions link1="gripper_left1" link2="gripper_right1" reason="Mechanism"/>
+  <disable_collisions link1="gripper_left1" link2="gripper_right2" reason="Mechanism"/>
+  <disable_collisions link1="gripper_left1" link2="gripper_right3" reason="Mechanism"/>
+  <disable_collisions link1="gripper_left2" link2="gripper_right1" reason="Mechanism"/>
+  <disable_collisions link1="gripper_left2" link2="gripper_right2" reason="Mechanism"/>
+  <disable_collisions link1="gripper_left2" link2="gripper_right3" reason="Mechanism"/>
+  <disable_collisions link1="gripper_left3" link2="gripper_right1" reason="Mechanism"/>
+  <disable_collisions link1="gripper_left3" link2="gripper_right2" reason="Mechanism"/>
+  <disable_collisions link1="gripper_left3" link2="gripper_right3" reason="Mechanism"/>
+  <disable_collisions link1="gripper_base" link2="camera_link" reason="RigidlyMounted"/>
+  <disable_collisions link1="gripper_base" link2="camera_bottom_screw_frame" reason="RigidlyMounted"/>
 </robot>

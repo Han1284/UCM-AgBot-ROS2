@@ -20,6 +20,24 @@ def stop_process(process):
         process.terminate()
 
 
+def resolve_perception_python() -> Path:
+    """Prefer the vision virtualenv when the launcher itself is system Python."""
+    virtual_env = os.environ.get('VIRTUAL_ENV')
+    candidates = []
+    if virtual_env:
+        candidates.append(Path(virtual_env) / 'bin' / 'python3')
+
+    script_path = Path(__file__).resolve()
+    for parent in script_path.parents:
+        candidates.append(parent / '.venv-romu4o' / 'bin' / 'python3')
+
+    candidates.append(Path(sys.executable))
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return Path(sys.executable)
+
+
 def finalize_candidates():
     """Republish candidates and verify that at least one really exists."""
     try:
@@ -53,11 +71,17 @@ def finalize_candidates():
 
 
 def main():
-    virtual_env = os.environ.get('VIRTUAL_ENV')
-    perception_python = (
-        Path(virtual_env) / 'bin' / 'python3'
-        if virtual_env else Path(sys.executable)
-    )
+    robot_profile = os.environ.get(
+        'LEAF_PIPELINE_ROBOT_PROFILE', 'tm5_rg2')
+    pro450 = robot_profile == 'pro450_f100'
+    launch_package = 'pro450_sim' if pro450 else 'leaf_manipulation_sim'
+    mtc_launch = (
+        'pro450_leaf_mtc.launch.py'
+        if pro450 else 'run_leaf_mtc_demo.launch.py')
+    observation_launch = (
+        'pro450_multi_view_observation.launch.py'
+        if pro450 else 'run_multi_view_observation.launch.py')
+    perception_python = resolve_perception_python()
     if not perception_python.is_file():
         print(
             f'[leaf_pipeline] 找不到感知 Python: {perception_python}',
@@ -70,18 +94,34 @@ def main():
         '[leaf_pipeline] 1/4 启动多视角叶片融合与候选点评分节点……',
         flush=True,
     )
-    perception = subprocess.Popen([
+    perception_command = [
         str(perception_python),
         '-m', 'leaf_extraction.multi_view_leaf_planner',
         '--ros-args',
-        '-p', 'target_frame:=base',
-        '-p', 'required_views:=3',
+        '-p', f'target_frame:={"base_root" if pro450 else "base"}',
         '-p', 'maximum_views:=5',
-    ])
+    ]
+    if pro450:
+        perception_command.extend([
+            '-p', 'scene_scale:=0.5',
+            '-p', 'required_views:=2',
+            '-p', 'overview_extent_scale:=1.25',
+            '-p', 'overview_minimum_span:=0.24',
+            '-p', 'minimum_downward_pitch_degrees:=20.0',
+            '-p', 'minimum_camera_above_canopy:=0.08',
+            '-p', 'minimum_view_coverage:=0.75',
+            '-p', 'view_frame_margin:=0.06',
+            '-p', 'minimum_projected_candidates:=4',
+            '-p', 'minimum_candidate_leaves:=1',
+        ])
+    else:
+        perception_command.extend(['-p', 'required_views:=3'])
+    perception = subprocess.Popen(perception_command)
     planner = subprocess.Popen([
-        'ros2', 'launch', 'leaf_manipulation_sim',
-        'run_leaf_mtc_demo.launch.py',
+        'ros2', 'launch', launch_package,
+        mtc_launch,
         'ik_only:=false',
+        'execute:=' + os.environ.get('LEAF_MTC_EXECUTE', 'false'),
     ])
 
     print(
@@ -90,8 +130,8 @@ def main():
     )
     observation = subprocess.run(
         [
-            'ros2', 'launch', 'leaf_manipulation_sim',
-            'run_multi_view_observation.launch.py',
+            'ros2', 'launch', launch_package,
+            observation_launch,
             'maximum_views:=5',
         ],
         check=False,

@@ -122,6 +122,7 @@ class MultiViewLeafPlanner(Node):
         self.declare_parameter('target_frame', 'base')
         self.declare_parameter('model_path', default_model)
         self.declare_parameter('confidence', 0.25)
+        self.declare_parameter('scene_scale', 1.0)
         self.declare_parameter('required_views', 3)
         self.declare_parameter('minimum_leaf_views', 1)
         self.declare_parameter('maximum_views', 5)
@@ -168,13 +169,24 @@ class MultiViewLeafPlanner(Node):
         self.declare_parameter('minimum_nbv_translation', 0.04)
 
         self.target_frame = str(self.get_parameter('target_frame').value)
+        self.scene_scale = float(self.get_parameter('scene_scale').value)
+        self.metric_floor = 0.02 * self.scene_scale
+        self.minimum_crop_height = 0.10 * self.scene_scale
+        self.surface_noise_reference = 0.004 * self.scene_scale
+        self.neighbour_distance_reference = 0.10 * self.scene_scale
+        self.local_geometry_radius = 0.018 * self.scene_scale
+        self.quality_radius_floor = 0.012 * self.scene_scale
+        self.reachability_decay_length = 0.12 * self.scene_scale
+        self.local_view_radius_gate = 0.02 * self.scene_scale
+        self.local_view_planar_gate = 0.01 * self.scene_scale
         self.required_views = int(self.get_parameter('required_views').value)
         self.minimum_leaf_views = int(
             self.get_parameter('minimum_leaf_views').value)
         self.maximum_views = int(self.get_parameter('maximum_views').value)
-        self.association_distance = float(
+        self.association_distance = self.scene_scale * float(
             self.get_parameter('association_distance').value)
-        self.voxel_size = float(self.get_parameter('voxel_size').value)
+        self.voxel_size = self.scene_scale * float(
+            self.get_parameter('voxel_size').value)
         self.candidate_count = int(
             self.get_parameter('candidate_count').value)
         self.per_leaf_candidate_count = int(
@@ -197,18 +209,19 @@ class MultiViewLeafPlanner(Node):
             self.get_parameter('surface_support_voxels').value)
         self.minimum_edge_margin_ratio = float(
             self.get_parameter('minimum_edge_margin_ratio').value)
-        self.approach_distance = float(
+        self.approach_distance = self.scene_scale * float(
             self.get_parameter('approach_distance').value)
-        self.minimum_clearance = float(
+        self.minimum_clearance = self.scene_scale * float(
             self.get_parameter('minimum_clearance').value)
-        self.view_lateral_offset = float(
+        self.view_lateral_offset = self.scene_scale * float(
             self.get_parameter('view_lateral_offset').value)
         self.view_radial_scale = float(
             self.get_parameter('view_radial_scale').value)
-        self.view_height = float(self.get_parameter('view_height').value)
+        self.view_height = self.scene_scale * float(
+            self.get_parameter('view_height').value)
         self.overview_extent_scale = float(
             self.get_parameter('overview_extent_scale').value)
-        self.overview_minimum_span = float(
+        self.overview_minimum_span = self.scene_scale * float(
             self.get_parameter('overview_minimum_span').value)
         self.overview_image_margin = float(
             self.get_parameter('overview_image_margin').value)
@@ -218,7 +231,7 @@ class MultiViewLeafPlanner(Node):
             self.get_parameter('minimum_downward_pitch_degrees').value)
         self.maximum_downward_pitch_degrees = float(
             self.get_parameter('maximum_downward_pitch_degrees').value)
-        self.minimum_camera_above_canopy = float(
+        self.minimum_camera_above_canopy = self.scene_scale * float(
             self.get_parameter('minimum_camera_above_canopy').value)
         if not (
             0.0 < self.minimum_downward_pitch_degrees
@@ -231,11 +244,11 @@ class MultiViewLeafPlanner(Node):
             self.get_parameter('camera_horizontal_fov').value)
         self.adaptive_ready_score = float(
             self.get_parameter('adaptive_ready_score').value)
-        self.canopy_expansion_margin = float(
+        self.canopy_expansion_margin = self.scene_scale * float(
             self.get_parameter('canopy_expansion_margin').value)
         self.initial_canopy_gate_margin_ratio = float(
             self.get_parameter('initial_canopy_gate_margin_ratio').value)
-        self.initial_canopy_gate_vertical_margin = float(
+        self.initial_canopy_gate_vertical_margin = self.scene_scale * float(
             self.get_parameter(
                 'initial_canopy_gate_vertical_margin').value)
         self.minimum_view_coverage = float(
@@ -251,7 +264,7 @@ class MultiViewLeafPlanner(Node):
         self.minimum_nbv_angular_separation = math.radians(float(
             self.get_parameter(
                 'minimum_nbv_angular_separation_degrees').value))
-        self.minimum_nbv_translation = float(
+        self.minimum_nbv_translation = self.scene_scale * float(
             self.get_parameter('minimum_nbv_translation').value)
         self.confidence = float(self.get_parameter('confidence').value)
 
@@ -338,7 +351,8 @@ class MultiViewLeafPlanner(Node):
             [item.points for item in observations], axis=0)
         lower = np.percentile(points, 2.0, axis=0)
         upper = np.percentile(points, 98.0, axis=0)
-        detected_size = np.maximum(upper - lower, 0.02)
+        detected_size = np.maximum(
+            upper - lower, 0.02 * self.scene_scale)
         conservative_size = detected_size.copy()
         conservative_size[:2] = np.maximum(
             self.overview_extent_scale * detected_size[:2],
@@ -372,6 +386,9 @@ class MultiViewLeafPlanner(Node):
         response.success = count > 0
         response.message = (
             f'overview_candidates={count}; '
+            f'observed_bounds=({lower[0]:.3f},{lower[1]:.3f},'
+            f'{lower[2]:.3f})-({upper[0]:.3f},{upper[1]:.3f},'
+            f'{upper[2]:.3f}); '
             f'conservative_span={self.coarse_canopy_span:.3f} m; '
             f'preferred_overview_elevation='
             f'{self.overview_elevation_degrees:.1f} deg; '
@@ -562,7 +579,8 @@ class MultiViewLeafPlanner(Node):
             instance_points = points[instance_mask]
             finite = np.all(np.isfinite(instance_points), axis=1)
             instance_points = instance_points[finite]
-            instance_points = instance_points[instance_points[:, 2] > 0.10]
+            instance_points = instance_points[
+                instance_points[:, 2] > self.minimum_crop_height]
             if instance_points.shape[0] < 40:
                 continue
             instance_points = self._robust_filter(instance_points)
@@ -610,7 +628,7 @@ class MultiViewLeafPlanner(Node):
                 frontier_camera = points[instance_mask & frontier_mask]
                 valid_frontier = (
                     np.all(np.isfinite(frontier_camera), axis=1)
-                    & (frontier_camera[:, 2] > 0.10)
+                    & (frontier_camera[:, 2] > self.minimum_crop_height)
                 )
                 frontier_camera = frontier_camera[valid_frontier]
                 if frontier_camera.shape[0] >= 6:
@@ -1044,12 +1062,14 @@ class MultiViewLeafPlanner(Node):
         detector_confidence = float(np.mean([
             item.confidence for item in track.observations]))
         surface_noise = math.sqrt(max(float(values[order[0]]), 0.0))
-        normal_quality = math.exp(-surface_noise / 0.004)
+        normal_quality = math.exp(-surface_noise / max(
+            self.surface_noise_reference, 1e-6))
         if other_tree is None:
             neighbour_score = 1.0
         else:
             neighbour_distance = float(other_tree.query(centre)[0])
-            neighbour_score = clamp01(neighbour_distance / 0.10)
+            neighbour_score = clamp01(neighbour_distance / max(
+                self.neighbour_distance_reference, 1e-6))
         visibility = clamp01(0.65 * view_support + 0.35 * untruncated)
         leaf_score = sum((
             0.35 * neighbour_score,
@@ -1081,14 +1101,16 @@ class MultiViewLeafPlanner(Node):
                 0.5 * local_leaf_width, self.voxel_size)
             if edge_margin_ratio < self.minimum_edge_margin_ratio:
                 continue
-            neighbour_indices = leaf_tree.query_ball_point(point, 0.018)
+            neighbour_indices = leaf_tree.query_ball_point(
+                point, self.local_geometry_radius)
             if len(neighbour_indices) < 8:
                 continue
             local = points[neighbour_indices]
             local_values, local_vectors = np.linalg.eigh(
                 np.cov((local - point).T))
             local_noise = math.sqrt(max(float(local_values[0]), 0.0))
-            flatness = math.exp(-local_noise / 0.0025)
+            flatness = math.exp(-local_noise / max(
+                0.0025 * self.scene_scale, 1e-6))
             local_normal = normalized(local_vectors[:, 0])
             if float(np.dot(local_normal, normal)) < 0.0:
                 local_normal = -local_normal
@@ -1204,7 +1226,8 @@ class MultiViewLeafPlanner(Node):
             lower = np.percentile(points, 2.0, axis=0)
             upper = np.percentile(points, 98.0, axis=0)
         centre = 0.5 * (lower + upper)
-        size = np.maximum(upper - lower, 0.02)
+        size = np.maximum(
+            upper - lower, self.metric_floor)
         marker = Marker()
         marker.header.frame_id = self.target_frame
         marker.header.stamp = cloud.header.stamp
@@ -1227,7 +1250,8 @@ class MultiViewLeafPlanner(Node):
         """Expand, but never shrink, the possible whole-plant envelope."""
         observed_lower = np.percentile(points, 2.0, axis=0)
         observed_upper = np.percentile(points, 98.0, axis=0)
-        observed_size = np.maximum(observed_upper - observed_lower, 0.02)
+        observed_size = np.maximum(
+            observed_upper - observed_lower, self.metric_floor)
         padding = 0.05 * observed_size
         observed_lower -= padding
         observed_upper += padding
@@ -1309,11 +1333,11 @@ class MultiViewLeafPlanner(Node):
         camera_rotation = Rotation.from_quat(camera_quaternion)
         safe_offset = camera_position - centre
         planar_direction = safe_offset[:2]
-        if np.linalg.norm(planar_direction) < 0.02:
+        if np.linalg.norm(planar_direction) < self.metric_floor:
             optical_axis = camera_rotation.apply(
                 np.array([0.0, 0.0, 1.0]))
             planar_direction = -optical_axis[:2]
-        if np.linalg.norm(planar_direction) < 0.02:
+        if np.linalg.norm(planar_direction) < self.metric_floor:
             planar_direction = np.array([-1.0, 0.0])
         planar_direction = normalized(planar_direction)
 
@@ -1358,7 +1382,7 @@ class MultiViewLeafPlanner(Node):
             elevation = math.radians(elevation_degrees)
             required_height = (
                 upper[2] + self.minimum_camera_above_canopy - centre[2])
-            for distance_scale in (1.0, 0.82, 0.68):
+            for distance_scale in (1.0, 0.82, 0.68, 0.56, 0.44):
                 distance = max(
                     distance_scale * full_coverage_distance,
                     required_height / max(math.sin(elevation), 1e-3),
@@ -1601,7 +1625,8 @@ class MultiViewLeafPlanner(Node):
             # normal estimate still need a second view.
             quality_deficits = []
             quality_tree = cKDTree(full_fused)
-            quality_radius = max(3.0 * self.voxel_size, 0.012)
+            quality_radius = max(
+                3.0 * self.voxel_size, self.quality_radius_floor)
             for point, observed_direction in zip(
                     kept_points, representative):
                 neighbor_indices = quality_tree.query_ball_point(
@@ -1613,7 +1638,8 @@ class MultiViewLeafPlanner(Node):
                 covariance = np.cov(neighborhood, rowvar=False)
                 eigenvalues, eigenvectors = np.linalg.eigh(covariance)
                 local_noise = math.sqrt(max(float(eigenvalues[0]), 0.0))
-                noise_deficit = clamp01(local_noise / 0.004)
+                noise_deficit = clamp01(local_noise / max(
+                    self.surface_noise_reference, 1e-6))
                 local_normal = eigenvectors[:, 0]
                 incidence_quality = abs(float(np.dot(
                     local_normal, observed_direction)))
@@ -1698,7 +1724,8 @@ class MultiViewLeafPlanner(Node):
             lower = np.percentile(points, 2.0, axis=0)
             upper = np.percentile(points, 98.0, axis=0)
         centre = 0.5 * (lower + upper)
-        size = np.maximum(upper - lower, 0.02)
+        size = np.maximum(
+            upper - lower, 0.02 * self.scene_scale)
         canopy_span = float(max(size[:2]))
         box_samples = self._box_surface_samples(lower, upper)
         focus, frontier_samples = self._frontier_focus(
@@ -1711,7 +1738,7 @@ class MultiViewLeafPlanner(Node):
         coverage_distance = max(
             envelope_radius / max(
                 usable * math.tan(0.5 * limiting_fov), 1e-3),
-            0.30,
+            0.30 * self.scene_scale,
         )
 
         all_observations = [
@@ -1722,7 +1749,7 @@ class MultiViewLeafPlanner(Node):
         observed_directions = []
         for observation in all_observations:
             offset = observation.camera_position - centre
-            if np.linalg.norm(offset) > 0.02:
+            if np.linalg.norm(offset) > self.metric_floor:
                 observed_directions.append(normalized(offset))
         latest_observation = (
             max(all_observations, key=lambda item: item.view_id)
@@ -1769,7 +1796,8 @@ class MultiViewLeafPlanner(Node):
                     position - latest_observation.camera_position))
                 motion_cost = movement / max(
                     coverage_distance, self.voxel_size)
-                reachability_prior = math.exp(-movement / 0.12)
+                reachability_prior = math.exp(-movement / max(
+                    self.reachability_decay_length, 1e-6))
                 history_distance = float(np.min(np.linalg.norm(
                     historical_positions - position, axis=1)))
             else:
@@ -1831,7 +1859,7 @@ class MultiViewLeafPlanner(Node):
                 shell_distance = max(
                     distance_scale * coverage_distance,
                     required_height / max(math.sin(elevation), 1e-3),
-                    0.24,
+                    0.24 * self.scene_scale,
                 )
                 azimuth_count = (
                     1 if abs(elevation_degrees - 90.0) < 1e-6 else 8)
@@ -1871,44 +1899,98 @@ class MultiViewLeafPlanner(Node):
             current_offset = latest_observation.camera_position - centre
             current_radius = float(np.linalg.norm(current_offset))
             planar_radius = float(np.linalg.norm(current_offset[:2]))
-            if current_radius > 0.02 and planar_radius > 0.01:
+            if (
+                current_radius > self.local_view_radius_gate
+                and planar_radius > self.local_view_planar_gate
+            ):
                 current_azimuth = math.atan2(
                     current_offset[1], current_offset[0])
                 current_elevation = math.asin(float(np.clip(
                     current_offset[2] / current_radius, -1.0, 1.0)))
-                current_elevation_degrees = math.degrees(
-                    current_elevation)
-                if (
-                    self.minimum_downward_pitch_degrees
-                    <= current_elevation_degrees
-                    <= self.maximum_downward_pitch_degrees
-                ):
-                    required_height = (
-                        upper[2] + self.minimum_camera_above_canopy
-                        - centre[2]
-                    )
-                    local_radius = max(
-                        current_radius,
-                        required_height
-                        / max(math.sin(current_elevation), 1e-3),
-                    )
-                    for azimuth_delta_degrees in (
-                        -5.0, 5.0, -10.0, 10.0, -15.0, 15.0
-                    ):
-                        azimuth = current_azimuth + math.radians(
-                            azimuth_delta_degrees)
-                        direction = np.array([
-                            math.cos(current_elevation) * math.cos(azimuth),
-                            math.cos(current_elevation) * math.sin(azimuth),
-                            math.sin(current_elevation),
-                        ])
-                        position = centre + local_radius * direction
+                current_elevation_degrees = math.degrees(current_elevation)
+                seed_elevation_degrees = float(np.clip(
+                    current_elevation_degrees,
+                    self.minimum_downward_pitch_degrees,
+                    self.maximum_downward_pitch_degrees,
+                ))
+                required_height = (
+                    upper[2] + self.minimum_camera_above_canopy
+                    - centre[2]
+                )
+                seed_elevation = math.radians(seed_elevation_degrees)
+                base_local_radius = max(
+                    current_radius,
+                    required_height / max(math.sin(seed_elevation), 1e-3),
+                )
+                for elevation_delta_degrees in (0.0, -5.0, 5.0, -10.0, 10.0):
+                    elevation_degrees = float(np.clip(
+                        seed_elevation_degrees + elevation_delta_degrees,
+                        self.minimum_downward_pitch_degrees,
+                        self.maximum_downward_pitch_degrees,
+                    ))
+                    elevation = math.radians(elevation_degrees)
+                    minimum_radius = required_height / max(
+                        math.sin(elevation), 1e-3)
+                    for radius_scale in (0.85, 1.0, 1.15):
+                        local_radius = max(
+                            radius_scale * base_local_radius,
+                            minimum_radius,
+                            0.24 * self.scene_scale,
+                        )
+                        for azimuth_delta_degrees in (
+                            0.0, -5.0, 5.0, -10.0, 10.0, -15.0, 15.0
+                        ):
+                            azimuth = current_azimuth + math.radians(
+                                azimuth_delta_degrees)
+                            direction = np.array([
+                                math.cos(elevation) * math.cos(azimuth),
+                                math.cos(elevation) * math.sin(azimuth),
+                                math.sin(elevation),
+                            ])
+                            position = centre + local_radius * direction
+                            for target in (centre, focus):
+                                quaternion = self._look_at_quaternion(
+                                    position, target)
+                                if not self._valid_downward_view(
+                                    position, quaternion, upper[2]
+                                ):
+                                    continue
+                                candidate = evaluate_view(
+                                    position, quaternion, direction)
+                                if candidate is not None:
+                                    local_views.append(candidate)
+
+                radial_direction = normalized(current_offset)
+                lateral_direction = normalized(np.array([
+                    -current_offset[1], current_offset[0], 0.0,
+                ]))
+                if np.linalg.norm(lateral_direction) < 1e-6:
+                    lateral_direction = np.array([0.0, 1.0, 0.0])
+                vertical_direction = np.array([0.0, 0.0, 1.0])
+                micro_step = 0.04 * self.scene_scale
+                retreat_step = 0.06 * self.scene_scale
+                direct_offsets = (
+                    np.zeros(3),
+                    micro_step * lateral_direction,
+                    -micro_step * lateral_direction,
+                    0.75 * micro_step * vertical_direction,
+                    -0.75 * micro_step * vertical_direction,
+                    -retreat_step * radial_direction,
+                    -retreat_step * radial_direction
+                    + 0.5 * micro_step * lateral_direction,
+                    -retreat_step * radial_direction
+                    - 0.5 * micro_step * lateral_direction,
+                )
+                for offset in direct_offsets:
+                    position = latest_observation.camera_position + offset
+                    for target in (centre, focus):
                         quaternion = self._look_at_quaternion(
-                            position, centre)
+                            position, target)
                         if not self._valid_downward_view(
                             position, quaternion, upper[2]
                         ):
                             continue
+                        direction = normalized(position - centre)
                         candidate = evaluate_view(
                             position, quaternion, direction)
                         if candidate is not None:
@@ -2130,7 +2212,9 @@ class MultiViewLeafPlanner(Node):
                 z=float(candidate.point[2]),
             )
             sphere.pose.orientation.w = 1.0
-            sphere.scale = Vector3(x=0.014, y=0.014, z=0.014)
+            marker_scale = 0.014 * self.scene_scale
+            sphere.scale = Vector3(
+                x=marker_scale, y=marker_scale, z=marker_scale)
             sphere.color.r = 0.05
             sphere.color.g = 0.85
             sphere.color.b = 0.25
@@ -2145,10 +2229,10 @@ class MultiViewLeafPlanner(Node):
             label.pose.position = Point(
                 x=float(candidate.point[0]),
                 y=float(candidate.point[1]),
-                z=float(candidate.point[2] + 0.025),
+                z=float(candidate.point[2] + 0.025 * self.scene_scale),
             )
             label.pose.orientation.w = 1.0
-            label.scale.z = 0.025
+            label.scale.z = 0.025 * self.scene_scale
             label.color.r = 1.0
             label.color.g = 1.0
             label.color.b = 1.0

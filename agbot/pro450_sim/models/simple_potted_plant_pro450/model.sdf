@@ -1,0 +1,704 @@
+<?xml version='1.0' encoding='utf-8'?>
+<sdf version="1.6">
+  <model name="simple_potted_plant_pro450">
+    <static>true</static>
+    <self_collide>false</self_collide>
+    <link name="plant_link">
+      <gravity>false</gravity>
+      <visual name="plant_visual">
+        <pose>0 0 5e-05 1.570796327 0 0</pose>
+        <geometry>
+          <mesh>
+            <uri>model://simple_potted_plant/meshes/FlowerPot_fortress.obj</uri>
+            <scale>0.05 0.05 0.05</scale>
+          </mesh>
+        </geometry>
+      </visual>
+      <collision name="pot_collision">
+        <pose>0 0 0.058 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.06</radius>
+            <length>0.116</length>
+          </cylinder>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.8</mu>
+              <mu2>0.8</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>1000000</kp>
+              <kd>10</kd>
+              <max_vel>0.01</max_vel>
+              <min_depth>0.001</min_depth>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+      <collision name="leaf_1_segment_4_collision">
+        <pose>-0.04925 -0.0815 0.25 0 -0.4922 -2.103</pose>
+        <geometry>
+          <box>
+            <size>0.06325 0.0325 0.004</size>
+          </box>
+        </geometry>
+        <max_contacts>20</max_contacts>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>200000</kp>
+              <kd>20</kd>
+              <max_vel>0.005</max_vel>
+              <min_depth>0.0005</min_depth>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+      <collision name="leaf_2_segment_4_collision">
+        <pose>0.08875 -0.07 0.25125 0 -0.4632 -0.6889</pose>
+        <geometry>
+          <box>
+            <size>0.06555 0.0325 0.004</size>
+          </box>
+        </geometry>
+        <max_contacts>20</max_contacts>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>200000</kp>
+              <kd>20</kd>
+              <max_vel>0.005</max_vel>
+              <min_depth>0.0005</min_depth>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+      <collision name="leaf_3_segment_4_collision">
+        <pose>0.054 0.055 0.19125 0 -0.3591 0.8491</pose>
+        <geometry>
+          <box>
+            <size>0.03955 0.0275 0.004</size>
+          </box>
+        </geometry>
+        <max_contacts>20</max_contacts>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>200000</kp>
+              <kd>20</kd>
+              <max_vel>0.005</max_vel>
+              <min_depth>0.0005</min_depth>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+      <collision name="leaf_4_segment_4_collision">
+        <pose>-0.05175 0.0725 0.21825 0 -0.4283 2.3036</pose>
+        <geometry>
+          <box>
+            <size>0.05575 0.03 0.004</size>
+          </box>
+        </geometry>
+        <max_contacts>20</max_contacts>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>200000</kp>
+              <kd>20</kd>
+              <max_vel>0.005</max_vel>
+              <min_depth>0.0005</min_depth>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+      <collision name="leaf_1_segment_1_collision">
+        <pose>0.00125 -0.00125 0.12125 0 -1.3262 -2.3562</pose>
+        <geometry>
+          <box>
+            <size>0.0478 0.01 0.004</size>
+          </box>
+        </geometry>
+        <max_contacts>20</max_contacts>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>200000</kp>
+              <kd>20</kd>
+              <max_vel>0.005</max_vel>
+              <min_depth>0.0005</min_depth>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+      <collision name="leaf_1_segment_2_collision">
+        <pose>-0.00825 -0.015 0.1675 0 -1.1385 -2.0926</pose>
+        <geometry>
+          <box>
+            <size>0.05905 0.0175 0.004</size>
+          </box>
+        </geometry>
+        <max_contacts>20</max_contacts>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>200000</kp>
+              <kd>20</kd>
+              <max_vel>0.005</max_vel>
+              <min_depth>0.0005</min_depth>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+      <collision name="leaf_1_segment_3_collision">
+        <pose>-0.025 -0.042 0.21425 0 -0.8211 -2.1451</pose>
+        <geometry>
+          <box>
+            <size>0.06345 0.025 0.004</size>
+          </box>
+        </geometry>
+        <max_contacts>20</max_contacts>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>200000</kp>
+              <kd>20</kd>
+              <max_vel>0.005</max_vel>
+              <min_depth>0.0005</min_depth>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+      <collision name="leaf_1_segment_5_collision">
+        <pose>-0.0705 -0.1205 0.2645 0 -0.0273 -2.0222</pose>
+        <geometry>
+          <box>
+            <size>0.0407 0.0225 0.004</size>
+          </box>
+        </geometry>
+        <max_contacts>20</max_contacts>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>200000</kp>
+              <kd>20</kd>
+              <max_vel>0.005</max_vel>
+              <min_depth>0.0005</min_depth>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+      <collision name="leaf_2_segment_1_collision">
+        <pose>0.01525 -0.00125 0.12025 0 -1.3767 -1.0304</pose>
+        <geometry>
+          <box>
+            <size>0.04935 0.01 0.004</size>
+          </box>
+        </geometry>
+        <max_contacts>20</max_contacts>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>200000</kp>
+              <kd>20</kd>
+              <max_vel>0.005</max_vel>
+              <min_depth>0.0005</min_depth>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+      <collision name="leaf_2_segment_2_collision">
+        <pose>0.0275 -0.01625 0.16875 0 -1.0502 -0.8442</pose>
+        <geometry>
+          <box>
+            <size>0.0645 0.0175 0.004</size>
+          </box>
+        </geometry>
+        <max_contacts>20</max_contacts>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>200000</kp>
+              <kd>20</kd>
+              <max_vel>0.005</max_vel>
+              <min_depth>0.0005</min_depth>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+      <collision name="leaf_2_segment_3_collision">
+        <pose>0.0525 -0.04 0.21625 0 -0.8277 -0.6947</pose>
+        <geometry>
+          <box>
+            <size>0.0617 0.025 0.004</size>
+          </box>
+        </geometry>
+        <max_contacts>20</max_contacts>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>200000</kp>
+              <kd>20</kd>
+              <max_vel>0.005</max_vel>
+              <min_depth>0.0005</min_depth>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+      <collision name="leaf_2_segment_5_collision">
+        <pose>0.12275 -0.0965 0.26375 0 0.0799 -0.6147</pose>
+        <geometry>
+          <box>
+            <size>0.0353 0.0225 0.004</size>
+          </box>
+        </geometry>
+        <max_contacts>20</max_contacts>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>200000</kp>
+              <kd>20</kd>
+              <max_vel>0.005</max_vel>
+              <min_depth>0.0005</min_depth>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+      <collision name="leaf_3_segment_1_collision">
+        <pose>0.01125 0.0095 0.11175 0 -1.3745 0.4993</pose>
+        <geometry>
+          <box>
+            <size>0.0361 0.009 0.004</size>
+          </box>
+        </geometry>
+        <max_contacts>20</max_contacts>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>200000</kp>
+              <kd>20</kd>
+              <max_vel>0.005</max_vel>
+              <min_depth>0.0005</min_depth>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+      <collision name="leaf_3_segment_2_collision">
+        <pose>0.02075 0.018 0.14375 0 -1.0315 0.8036</pose>
+        <geometry>
+          <box>
+            <size>0.04185 0.015 0.004</size>
+          </box>
+        </geometry>
+        <max_contacts>20</max_contacts>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>200000</kp>
+              <kd>20</kd>
+              <max_vel>0.005</max_vel>
+              <min_depth>0.0005</min_depth>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+      <collision name="leaf_3_segment_3_collision">
+        <pose>0.03525 0.03375 0.1725 0 -0.8189 0.8459</pose>
+        <geometry>
+          <box>
+            <size>0.03825 0.0225 0.004</size>
+          </box>
+        </geometry>
+        <max_contacts>20</max_contacts>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>200000</kp>
+              <kd>20</kd>
+              <max_vel>0.005</max_vel>
+              <min_depth>0.0005</min_depth>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+      <collision name="leaf_3_segment_5_collision">
+        <pose>0.06975 0.075 0.197 0 0.0563 1.0062</pose>
+        <geometry>
+          <box>
+            <size>0.0218 0.0175 0.004</size>
+          </box>
+        </geometry>
+        <max_contacts>20</max_contacts>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>200000</kp>
+              <kd>20</kd>
+              <max_vel>0.005</max_vel>
+              <min_depth>0.0005</min_depth>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+      <collision name="leaf_4_segment_1_collision">
+        <pose>0.00125 0.009 0.10825 0 -1.3564 1.8737</pose>
+        <geometry>
+          <box>
+            <size>0.0434 0.009 0.004</size>
+          </box>
+        </geometry>
+        <max_contacts>20</max_contacts>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>200000</kp>
+              <kd>20</kd>
+              <max_vel>0.005</max_vel>
+              <min_depth>0.0005</min_depth>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+      <collision name="leaf_4_segment_2_collision">
+        <pose>-0.0075 0.02275 0.15 0 -1.0705 2.2265</pose>
+        <geometry>
+          <box>
+            <size>0.0553 0.016 0.004</size>
+          </box>
+        </geometry>
+        <max_contacts>20</max_contacts>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>200000</kp>
+              <kd>20</kd>
+              <max_vel>0.005</max_vel>
+              <min_depth>0.0005</min_depth>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+      <collision name="leaf_4_segment_3_collision">
+        <pose>-0.0255 0.04375 0.19 0 -0.8495 2.3217</pose>
+        <geometry>
+          <box>
+            <size>0.0506 0.024 0.004</size>
+          </box>
+        </geometry>
+        <max_contacts>20</max_contacts>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>200000</kp>
+              <kd>20</kd>
+              <max_vel>0.005</max_vel>
+              <min_depth>0.0005</min_depth>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+      <collision name="leaf_4_segment_5_collision">
+        <pose>-0.07675 0.09875 0.2275 0 0.1173 2.384</pose>
+        <geometry>
+          <box>
+            <size>0.02965 0.02 0.004</size>
+          </box>
+        </geometry>
+        <max_contacts>20</max_contacts>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.6</mu>
+              <mu2>0.6</mu2>
+            </ode>
+          </friction>
+          <contact>
+            <ode>
+              <kp>200000</kp>
+              <kd>20</kd>
+              <max_vel>0.005</max_vel>
+              <min_depth>0.0005</min_depth>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+      <sensor name="leaf_1_segment_4_contact_sensor" type="contact">
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <contact>
+          <collision>leaf_1_segment_4_collision</collision>
+          <topic>/plant/leaf_1_contacts_gz</topic>
+        </contact>
+      </sensor>
+      <sensor name="leaf_2_segment_4_contact_sensor" type="contact">
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <contact>
+          <collision>leaf_2_segment_4_collision</collision>
+          <topic>/plant/leaf_2_contacts_gz</topic>
+        </contact>
+      </sensor>
+      <sensor name="leaf_3_segment_4_contact_sensor" type="contact">
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <contact>
+          <collision>leaf_3_segment_4_collision</collision>
+          <topic>/plant/leaf_3_contacts_gz</topic>
+        </contact>
+      </sensor>
+      <sensor name="leaf_4_segment_4_contact_sensor" type="contact">
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <contact>
+          <collision>leaf_4_segment_4_collision</collision>
+          <topic>/plant/leaf_4_contacts_gz</topic>
+        </contact>
+      </sensor>
+      <sensor name="leaf_1_segment_1_contact_sensor" type="contact">
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <contact>
+          <collision>leaf_1_segment_1_collision</collision>
+          <topic>/plant/leaf_1_contacts_gz</topic>
+        </contact>
+      </sensor>
+      <sensor name="leaf_1_segment_2_contact_sensor" type="contact">
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <contact>
+          <collision>leaf_1_segment_2_collision</collision>
+          <topic>/plant/leaf_1_contacts_gz</topic>
+        </contact>
+      </sensor>
+      <sensor name="leaf_1_segment_3_contact_sensor" type="contact">
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <contact>
+          <collision>leaf_1_segment_3_collision</collision>
+          <topic>/plant/leaf_1_contacts_gz</topic>
+        </contact>
+      </sensor>
+      <sensor name="leaf_1_segment_5_contact_sensor" type="contact">
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <contact>
+          <collision>leaf_1_segment_5_collision</collision>
+          <topic>/plant/leaf_1_contacts_gz</topic>
+        </contact>
+      </sensor>
+      <sensor name="leaf_2_segment_1_contact_sensor" type="contact">
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <contact>
+          <collision>leaf_2_segment_1_collision</collision>
+          <topic>/plant/leaf_2_contacts_gz</topic>
+        </contact>
+      </sensor>
+      <sensor name="leaf_2_segment_2_contact_sensor" type="contact">
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <contact>
+          <collision>leaf_2_segment_2_collision</collision>
+          <topic>/plant/leaf_2_contacts_gz</topic>
+        </contact>
+      </sensor>
+      <sensor name="leaf_2_segment_3_contact_sensor" type="contact">
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <contact>
+          <collision>leaf_2_segment_3_collision</collision>
+          <topic>/plant/leaf_2_contacts_gz</topic>
+        </contact>
+      </sensor>
+      <sensor name="leaf_2_segment_5_contact_sensor" type="contact">
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <contact>
+          <collision>leaf_2_segment_5_collision</collision>
+          <topic>/plant/leaf_2_contacts_gz</topic>
+        </contact>
+      </sensor>
+      <sensor name="leaf_3_segment_1_contact_sensor" type="contact">
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <contact>
+          <collision>leaf_3_segment_1_collision</collision>
+          <topic>/plant/leaf_3_contacts_gz</topic>
+        </contact>
+      </sensor>
+      <sensor name="leaf_3_segment_2_contact_sensor" type="contact">
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <contact>
+          <collision>leaf_3_segment_2_collision</collision>
+          <topic>/plant/leaf_3_contacts_gz</topic>
+        </contact>
+      </sensor>
+      <sensor name="leaf_3_segment_3_contact_sensor" type="contact">
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <contact>
+          <collision>leaf_3_segment_3_collision</collision>
+          <topic>/plant/leaf_3_contacts_gz</topic>
+        </contact>
+      </sensor>
+      <sensor name="leaf_3_segment_5_contact_sensor" type="contact">
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <contact>
+          <collision>leaf_3_segment_5_collision</collision>
+          <topic>/plant/leaf_3_contacts_gz</topic>
+        </contact>
+      </sensor>
+      <sensor name="leaf_4_segment_1_contact_sensor" type="contact">
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <contact>
+          <collision>leaf_4_segment_1_collision</collision>
+          <topic>/plant/leaf_4_contacts_gz</topic>
+        </contact>
+      </sensor>
+      <sensor name="leaf_4_segment_2_contact_sensor" type="contact">
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <contact>
+          <collision>leaf_4_segment_2_collision</collision>
+          <topic>/plant/leaf_4_contacts_gz</topic>
+        </contact>
+      </sensor>
+      <sensor name="leaf_4_segment_3_contact_sensor" type="contact">
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <contact>
+          <collision>leaf_4_segment_3_collision</collision>
+          <topic>/plant/leaf_4_contacts_gz</topic>
+        </contact>
+      </sensor>
+      <sensor name="leaf_4_segment_5_contact_sensor" type="contact">
+        <always_on>true</always_on>
+        <update_rate>100</update_rate>
+        <contact>
+          <collision>leaf_4_segment_5_collision</collision>
+          <topic>/plant/leaf_4_contacts_gz</topic>
+        </contact>
+      </sensor>
+    </link>
+  </model>
+</sdf>

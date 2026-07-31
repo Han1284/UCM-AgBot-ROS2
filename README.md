@@ -626,3 +626,12 @@ ros2 run tf2_ros tf2_echo base gripper
 Mortazavi, M., Cappelleri, D. J., Ehsani, R. (2025). *RoMu4o: A Robotic Manipulation Unit for Orchard Operations Automating Proximal Hyperspectral Leaf Sensing*. arXiv:2409.19786.
 
 TM5-900 的关节命名、MoveIt 配置、Gazebo 联动方式和驱动接口以 Techman 官方 [tmr_ros2 Humble 分支](https://github.com/TechmanRobotInc/tmr_ros2/tree/humble)为参考，不使用 `tmr_ros1` 作为实现基线或 Humble 构建依赖。
+cd ~/projects/ros2_ws
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+ros2 launch pro450_sim pro450_sim.launch.py control:=true
+
+cd ~/projects/ros2_ws
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+ros2 launch pro450_sim pro450_leafpipeline_sim.launch.py execute:=true

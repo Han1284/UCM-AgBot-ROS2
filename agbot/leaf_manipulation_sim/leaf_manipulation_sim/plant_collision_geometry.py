@@ -11,6 +11,8 @@ from shape_msgs.msg import SolidPrimitive
 
 
 PLANT_MODEL_NAME = 'plant_in_front_of_arm'
+DEFAULT_WORLD_PACKAGE = 'leaf_manipulation_sim'
+DEFAULT_WORLD_RELATIVE_PATH = os.path.join('worlds', 'leaf_bench.world')
 
 
 def quaternion_from_rpy(roll, pitch, yaw):
@@ -61,23 +63,44 @@ def parse_pose(element):
     return values[:3], quaternion_from_rpy(*values[3:])
 
 
-def plant_model_pose():
-    """Read the shared Gazebo/RViz/MoveIt plant pose from the world file."""
-    package_share = get_package_share_directory('leaf_manipulation_sim')
+def plant_model_transform():
+    """Read the shared plant pose and include scale from the selected world."""
+    package_name = os.environ.get(
+        'LEAF_PLANT_WORLD_PACKAGE', DEFAULT_WORLD_PACKAGE)
+    relative_path = os.environ.get(
+        'LEAF_PLANT_WORLD_RELATIVE_PATH', DEFAULT_WORLD_RELATIVE_PATH)
+    package_share = get_package_share_directory(package_name)
     world_root = ET.parse(
-        os.path.join(package_share, 'worlds', 'leaf_bench.world')).getroot()
+        os.path.join(package_share, relative_path)).getroot()
     for include in world_root.findall('.//include'):
         if include.findtext('name') == PLANT_MODEL_NAME:
-            return parse_pose(include.find('pose'))
+            position, rotation = parse_pose(include.find('pose'))
+            scale_element = include.find('scale')
+            scale = (
+                tuple(float(value) for value in scale_element.text.split())
+                if scale_element is not None else (1.0, 1.0, 1.0)
+            )
+            scale_override = os.environ.get('LEAF_PLANT_PROXY_SCALE')
+            if scale_override:
+                values = tuple(
+                    float(value) for value in scale_override.split())
+                scale = values if len(values) == 3 else (values[0],) * 3
+            return position, rotation, scale
     raise RuntimeError(
         f'Plant include {PLANT_MODEL_NAME!r} was not found in '
-        'leaf_bench.world')
+        f'{relative_path}')
+
+
+def plant_model_pose():
+    """Keep the original pose-only API used by the TM5 marker publisher."""
+    position, rotation, _ = plant_model_transform()
+    return position, rotation
 
 
 def plant_collision_objects():
     """Load the exact Gazebo pot and leaf proxy geometry into MoveIt."""
     package_share = get_package_share_directory('leaf_manipulation_sim')
-    model_position, model_rotation = plant_model_pose()
+    model_position, model_rotation, model_scale = plant_model_transform()
 
     model_root = ET.parse(
         os.path.join(
@@ -95,6 +118,10 @@ def plant_collision_objects():
             continue
 
         local_position, local_rotation = parse_pose(collision.find('pose'))
+        local_position = tuple(
+            local_position[index] * model_scale[index]
+            for index in range(3)
+        )
         rotated_position = rotate_point(model_rotation, local_position)
         pose = Pose(
             position=Point(
@@ -114,19 +141,23 @@ def plant_collision_objects():
         if box is not None:
             primitive.type = SolidPrimitive.BOX
             primitive.dimensions = [
-                float(value) for value in box.text.split()]
+                float(value) * model_scale[index]
+                for index, value in enumerate(box.text.split())
+            ]
         elif cylinder is not None:
             primitive.type = SolidPrimitive.CYLINDER
             primitive.dimensions = [0.0, 0.0]
             primitive.dimensions[SolidPrimitive.CYLINDER_HEIGHT] = float(
-                cylinder.findtext('length'))
+                cylinder.findtext('length')) * model_scale[2]
             primitive.dimensions[SolidPrimitive.CYLINDER_RADIUS] = float(
-                cylinder.findtext('radius'))
+                cylinder.findtext('radius')) * max(
+                    model_scale[0], model_scale[1])
         else:
             continue
 
         collision_object = CollisionObject()
-        collision_object.header.frame_id = 'world'
+        collision_object.header.frame_id = os.environ.get(
+            'LEAF_PLANT_FRAME', 'world')
         collision_object.id = name
         collision_object.primitives.append(primitive)
         collision_object.primitive_poses.append(pose)

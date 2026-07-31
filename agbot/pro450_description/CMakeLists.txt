@@ -3,7 +3,7 @@ project(pro450_description)
 
 find_package(ament_cmake REQUIRED)
 
-install(DIRECTORY meshes urdf DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY config meshes urdf DESTINATION share/${PROJECT_NAME})
 install(FILES UPSTREAM_LICENSE DESTINATION share/${PROJECT_NAME})
 
 ament_package()

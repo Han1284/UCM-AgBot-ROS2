@@ -88,9 +88,19 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     finally:
-        node.destroy_node()
+        # A launch shutdown can send a second SIGINT while rclpy destroys
+        # subscriptions.  Cleanup must stay best-effort: this helper owns no
+        # robot state and should never turn a successful planning run into an
+        # error report during teardown.
+        try:
+            node.destroy_node()
+        except KeyboardInterrupt:
+            pass
         if rclpy.ok():
-            rclpy.shutdown()
+            try:
+                rclpy.shutdown()
+            except KeyboardInterrupt:
+                pass
 
 
 if __name__ == '__main__':
