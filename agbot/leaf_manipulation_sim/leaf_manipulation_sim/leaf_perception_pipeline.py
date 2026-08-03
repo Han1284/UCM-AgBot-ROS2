@@ -99,20 +99,54 @@ def main():
         '-m', 'leaf_extraction.multi_view_leaf_planner',
         '--ros-args',
         '-p', f'target_frame:={"base_root" if pro450 else "base"}',
-        '-p', 'maximum_views:=5',
+        '-p', f'maximum_views:={"6" if pro450 else "5"}',
     ]
     if pro450:
         perception_command.extend([
             '-p', 'scene_scale:=0.5',
+            # Default: initial overview plus one geometry-diverse NBV.
+            # Further NBVs are requested adaptively only when the candidate
+            # set is insufficient or the fused surface has not converged.
             '-p', 'required_views:=2',
-            '-p', 'overview_extent_scale:=1.25',
-            '-p', 'overview_minimum_span:=0.24',
+            '-p', 'minimum_leaf_views:=2',
+            # Keep budget for adaptive extra NBVs when the candidate set is
+            # still thin after the default overview + one validation view.
+            '-p', 'minimum_nbv_angular_separation_degrees:=12.0',
+            # Distances are scaled by scene_scale=0.5 in the planner.
+            '-p', 'minimum_nbv_translation:=0.10',
+            # The second geometry-diverse view normally adds about 5-12% new
+            # voxels in this half-scale scene.  Treat <=15% as converged so a
+            # third NBV is reserved for genuinely incomplete observations.
+            '-p', 'low_surface_gain_ratio:=0.15',
+            '-p', 'low_surface_gain_patience:=1',
+            # Pull the camera farther back so the overview and first NBV
+            # actually enclose the whole half-scale canopy, not only the
+            # near leaves that happened to fill the previous tight frame.
+            '-p', 'overview_extent_scale:=1.60',
+            '-p', 'overview_minimum_span:=0.40',
             '-p', 'minimum_downward_pitch_degrees:=20.0',
             '-p', 'minimum_camera_above_canopy:=0.08',
-            '-p', 'minimum_view_coverage:=0.75',
-            '-p', 'view_frame_margin:=0.06',
+            '-p', 'minimum_view_coverage:=0.85',
+            '-p', 'view_frame_margin:=0.10',
+            # The planner scales metric parameters by scene_scale=0.5, so
+            # this enforces 20 mm between published contacts on one leaf.
+            '-p', 'minimum_candidate_separation:=0.04',
+            # Keep the original Trex outline margin (15% of local half-width).
+            # Do not raise this to invent fewer contacts; request more NBV
+            # coverage instead when the candidate set is thin.
+            '-p', 'minimum_edge_margin_ratio:=0.15',
+            # Projection used to clamp near-misses onto the proxy face rim,
+            # which published edge contacts that already failed Trex.  A
+            # modest inset only restores that rule on the collision face.
+            '-p', 'minimum_face_inset_ratio:=0.15',
+            # Root->tip entries must deviate by >=45 deg. Tip->root entries
+            # remain available when the required insertion fits the F100.
+            '-p', 'minimum_root_to_tip_approach_angle_degrees:=45.0',
+            '-p', 'gripper_internal_depth:=0.032',
+            # Insufficient contacts must trigger more NBV, not a weaker Trex
+            # gate.  Four interior contacts across two leaves is the floor.
             '-p', 'minimum_projected_candidates:=4',
-            '-p', 'minimum_candidate_leaves:=1',
+            '-p', 'minimum_candidate_leaves:=2',
         ])
     else:
         perception_command.extend(['-p', 'required_views:=3'])
@@ -132,7 +166,7 @@ def main():
         [
             'ros2', 'launch', launch_package,
             observation_launch,
-            'maximum_views:=5',
+            f'maximum_views:={"6" if pro450 else "5"}',
         ],
         check=False,
     )

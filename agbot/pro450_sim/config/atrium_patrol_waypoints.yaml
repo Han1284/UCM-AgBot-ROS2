@@ -1,0 +1,34 @@
+# Atrium 回-corridor patrol (map / world meters).
+# One clockwise lap: stop 5s at each plant dock along the way (arm idle).
+
+frame_id: map
+default_dwell_sec: 5.0
+
+phases:
+  - name: atrium_circuit
+    description: One 回 lap; dwell 5s at every plant facing the pot
+    waypoints:
+      # Start SW corner, head north on west corridor
+      - {name: start_sw, x: -4.0, y: -4.0, yaw: 1.57080, dwell: 0.0}
+      # West wall plants (face -X)
+      # atrium_map_v2 has a small inward SLAM return at x≈-4.2 here.  Dock
+      # 0.15 m inward to retain 0.45 m static clearance for the 0.28 m base.
+      - {name: plant_w_s, x: -3.85, y: -2.5, yaw: 3.14159, dwell: 5.0}
+      - {name: plant_w_n, x: -4.0, y: 2.5, yaw: 3.14159, dwell: 5.0}
+      # NW corner → east on north corridor
+      - {name: corner_nw, x: -4.0, y: 4.0, yaw: 0.0, dwell: 0.0}
+      # North wall plants (face +Y)
+      - {name: plant_n_w, x: -2.5, y: 4.0, yaw: 1.57080, dwell: 5.0}
+      - {name: plant_n_e, x: 2.5, y: 4.0, yaw: 1.57080, dwell: 5.0}
+      # NE corner → south on east corridor
+      - {name: corner_ne, x: 4.0, y: 4.0, yaw: -1.57080, dwell: 0.0}
+      # East wall plants (face +X)
+      - {name: plant_e_n, x: 4.0, y: 2.5, yaw: 0.0, dwell: 5.0}
+      - {name: plant_e_s, x: 4.0, y: -2.5, yaw: 0.0, dwell: 5.0}
+      # SE corner → west on south corridor
+      - {name: corner_se, x: 4.0, y: -4.0, yaw: 3.14159, dwell: 0.0}
+      # South wall plants (face -Y)
+      - {name: plant_s_e, x: 2.5, y: -4.0, yaw: -1.57080, dwell: 5.0}
+      - {name: plant_s_w, x: -2.5, y: -4.0, yaw: -1.57080, dwell: 5.0}
+      # Back to SW — lap complete
+      - {name: end_sw, x: -4.0, y: -4.0, yaw: 0.785, dwell: 1.0}

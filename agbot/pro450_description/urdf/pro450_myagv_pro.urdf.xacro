@@ -1,0 +1,183 @@
+<?xml version="1.0"?>
+<!-- myAGV Pro (no 3D LiDAR stack) + myCobot Pro 450 / F100 / D435.
+     Chassis meshes come from the vendor package agv_pro_description.
+     Default: wrist D435 owns camera_*; for chassis Orbbec SLAM use
+     include_chassis_orbbec:=true include_wrist_camera:=false. -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="pro450_myagv_pro">
+  <xacro:arg name="use_gz_control" default="false"/>
+  <xacro:arg name="use_fake_hardware" default="false"/>
+  <xacro:arg name="collision_mesh_scale" default="1.0"/>
+  <xacro:arg name="use_floor_mount" default="false"/>
+  <xacro:arg name="include_2d_lidar_mesh" default="true"/>
+  <!-- Chassis Orbbec (agv_pro.urdf pose). Disable wrist D435 to free camera_link. -->
+  <xacro:arg name="include_chassis_orbbec" default="false"/>
+  <xacro:arg name="include_chassis_gz_camera" default="false"/>
+  <xacro:arg name="include_wrist_camera" default="true"/>
+
+  <!-- Deck mount for Pro450. Z matches the official top-deck height near laser_link. -->
+  <xacro:arg name="arm_mount_x" default="0.0"/>
+  <xacro:arg name="arm_mount_y" default="0.0"/>
+  <xacro:arg name="arm_mount_z" default="0.20"/>
+  <xacro:arg name="arm_mount_yaw" default="0.0"/>
+
+  <link name="base_footprint"/>
+
+  <joint name="base_joint" type="fixed">
+    <parent link="base_footprint"/>
+    <child link="base_link"/>
+    <origin xyz="0 0 0.020" rpy="0 0 0"/>
+  </joint>
+
+  <link name="base_link">
+    <inertial>
+      <origin xyz="-0.0076254 -0.00023134 0.06693" rpy="0 0 0"/>
+      <mass value="19.236"/>
+      <inertia ixx="0.14436" ixy="0.0012037" ixz="0.0019458"
+               iyy="0.24191" iyz="0.0044629" izz="0.33755"/>
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://agv_pro_description/meshes/base_link.stl"/>
+      </geometry>
+      <material name="agv_white"><color rgba="1 1 1 1"/></material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://agv_pro_description/meshes/base_link.stl"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <xacro:macro name="agv_wheel" params="name mesh x y z mass">
+    <link name="${name}_link">
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="${mass}"/>
+        <inertia ixx="0.00052" ixy="0" ixz="0" iyy="0.00098" iyz="0" izz="0.00052"/>
+      </inertial>
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://agv_pro_description/meshes/${mesh}"/>
+        </geometry>
+        <material name="agv_wheel"><color rgba="1 1 1 1"/></material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://agv_pro_description/meshes/${mesh}"/>
+        </geometry>
+      </collision>
+    </link>
+    <joint name="${name}_joint" type="continuous">
+      <parent link="base_link"/>
+      <child link="${name}_link"/>
+      <origin xyz="${x} ${y} ${z}" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:agv_wheel name="right_rear_wheel" mesh="wheel_rb_link.stl"
+    x="-0.171806101587598" y="-0.179900399999999" z="0.0518836514526621" mass="0.21659"/>
+  <xacro:agv_wheel name="right_front_wheel" mesh="wheel_rf_link.stl"
+    x="-0.17181" y="0.1799" z="0.051884" mass="0.21659"/>
+  <xacro:agv_wheel name="left_front_wheel" mesh="wheel_lf_link.stl"
+    x="0.17128" y="0.1799" z="0.052" mass="0.3015"/>
+  <xacro:agv_wheel name="left_rear_wheel" mesh="wheel_lb_link.stl"
+    x="0.17128" y="-0.1799" z="0.052" mass="0.29613"/>
+
+  <!-- Optional 2D lidar mesh only (no Livox / Unitree / FAST_LIO nodes). -->
+  <xacro:if value="$(arg include_2d_lidar_mesh)">
+    <link name="laser_link">
+      <inertial>
+        <origin xyz="-0.0035142 -2.8248E-05 0.0010013" rpy="0 0 0"/>
+        <mass value="0.049095"/>
+        <inertia ixx="2.0572E-05" ixy="8.5013E-08" ixz="2.0871E-07"
+                 iyy="2.0483E-05" iyz="-4.2154E-09" izz="3.4612E-05"/>
+      </inertial>
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://agv_pro_description/meshes/laser_link.stl"/>
+        </geometry>
+        <material name="agv_laser"><color rgba="1 1 1 1"/></material>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://agv_pro_description/meshes/laser_link.stl"/>
+        </geometry>
+      </collision>
+    </link>
+    <joint name="lidar_joint" type="fixed">
+      <parent link="base_link"/>
+      <child link="laser_link"/>
+      <origin xyz="0.17891 0 0.20928" rpy="0 0 0"/>
+    </joint>
+  </xacro:if>
+
+  <link name="imu_link"/>
+  <joint name="imu_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="imu_link"/>
+    <origin xyz="-0.17181 -0.0270532 0.14928" rpy="0 0 1.5707"/>
+  </joint>
+
+  <!-- Vendor chassis Orbbec mount (same as agv_pro.urdf camera_joint).
+       Optical frames + optional Gazebo RGB-D for sim SLAM. -->
+  <xacro:if value="$(arg include_chassis_orbbec)">
+    <link name="camera_link"/>
+    <joint name="camera_joint" type="fixed">
+      <parent link="base_link"/>
+      <child link="camera_link"/>
+      <origin xyz="0.23191 0 0.14928" rpy="0 0 0"/>
+    </joint>
+    <!-- ROS optical convention: Z forward, X right, Y down -->
+    <link name="camera_depth_frame"/>
+    <joint name="camera_depth_joint" type="fixed">
+      <parent link="camera_link"/>
+      <child link="camera_depth_frame"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+    <link name="camera_depth_optical_frame"/>
+    <joint name="camera_depth_optical_joint" type="fixed">
+      <parent link="camera_depth_frame"/>
+      <child link="camera_depth_optical_frame"/>
+      <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
+    </joint>
+    <link name="camera_color_frame"/>
+    <joint name="camera_color_joint" type="fixed">
+      <parent link="camera_link"/>
+      <child link="camera_color_frame"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+    <link name="camera_color_optical_frame"/>
+    <joint name="camera_color_optical_joint" type="fixed">
+      <parent link="camera_color_frame"/>
+      <child link="camera_color_optical_frame"/>
+      <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
+    </joint>
+    <xacro:if value="$(arg include_chassis_gz_camera)">
+      <xacro:include filename="$(find pro450_description)/urdf/pro450_gz_plugins.xacro"/>
+      <xacro:pro450_chassis_gz_rgbd_camera parent_link="camera_depth_frame" far="8.0"/>
+    </xacro:if>
+  </xacro:if>
+
+  <link name="arm_mount_link"/>
+  <joint name="arm_mount_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="arm_mount_link"/>
+    <origin xyz="$(arg arm_mount_x) $(arg arm_mount_y) $(arg arm_mount_z)"
+            rpy="0 0 $(arg arm_mount_yaw)"/>
+  </joint>
+
+  <xacro:include filename="$(find pro450_description)/urdf/pro450_f100_body.xacro"/>
+
+  <joint name="myagv_to_pro450_base" type="fixed">
+    <parent link="arm_mount_link"/>
+    <child link="base"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+</robot>

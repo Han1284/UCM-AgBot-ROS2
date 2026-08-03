@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<sdf version="1.8">
+  <model name="orchard_walls">
+    <static>true</static>
+    <link name="Wall_12">
+      <pose>-27.425 -0.125 0 0 0 -1.5708</pose>
+      <collision name="c"><pose>0 0 1.25 0 0 0</pose>
+        <geometry><box><size>42.25 0.15 2.5</size></box></geometry></collision>
+      <visual name="v"><pose>0 0 1.25 0 0 0</pose>
+        <geometry><box><size>42.25 0.15 2.5</size></box></geometry>
+        <material><ambient>0.55 0.55 0.55 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material>
+      </visual>
+    </link>
+    <link name="Wall_13">
+      <pose>0.124999 -21.175 0 0 0 0</pose>
+      <collision name="c"><pose>0 0 1.25 0 0 0</pose>
+        <geometry><box><size>55.25 0.15 2.5</size></box></geometry></collision>
+      <visual name="v"><pose>0 0 1.25 0 0 0</pose>
+        <geometry><box><size>55.25 0.15 2.5</size></box></geometry>
+        <material><ambient>0.55 0.55 0.55 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material>
+      </visual>
+    </link>
+    <link name="Wall_14">
+      <pose>27.675 0 0 0 0 1.5708</pose>
+      <collision name="c"><pose>0 0 1.25 0 0 0</pose>
+        <geometry><box><size>42.5 0.15 2.5</size></box></geometry></collision>
+      <visual name="v"><pose>0 0 1.25 0 0 0</pose>
+        <geometry><box><size>42.5 0.15 2.5</size></box></geometry>
+        <material><ambient>0.55 0.55 0.55 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material>
+      </visual>
+    </link>
+    <link name="Wall_15">
+      <pose>-1e-06 21.175 0 0 0 3.14159</pose>
+      <collision name="c"><pose>0 0 1.25 0 0 0</pose>
+        <geometry><box><size>55.5 0.15 2.5</size></box></geometry></collision>
+      <visual name="v"><pose>0 0 1.25 0 0 0</pose>
+        <geometry><box><size>55.5 0.15 2.5</size></box></geometry>
+        <material><ambient>0.55 0.55 0.55 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material>
+      </visual>
+    </link>
+  </model>
+</sdf>

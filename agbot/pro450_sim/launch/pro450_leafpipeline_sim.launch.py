@@ -9,7 +9,15 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, TimerAction
+from launch.actions import (
+    DeclareLaunchArgument,
+    EmitEvent,
+    IncludeLaunchDescription,
+    RegisterEventHandler,
+    TimerAction,
+)
+from launch.event_handlers import OnProcessExit
+from launch.events import Shutdown
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -26,6 +34,15 @@ def generate_launch_description():
         'LEAF_PLANT_FRAME': 'base_root',
         'LEAF_PLANT_PROXY_SCALE': '0.5',
     }
+    pipeline = Node(
+        package='pro450_sim',
+        executable='pro450_leaf_pipeline',
+        output='screen',
+        additional_env={
+            **environment,
+            'LEAF_MTC_EXECUTE': execute,
+        },
+    )
     return LaunchDescription([
         DeclareLaunchArgument(
             'execute', default_value='false',
@@ -58,14 +75,11 @@ def generate_launch_description():
         ),
         TimerAction(
             period=10.0,
-            actions=[Node(
-                package='pro450_sim',
-                executable='pro450_leaf_pipeline',
-                output='screen',
-                additional_env={
-                    **environment,
-                    'LEAF_MTC_EXECUTE': execute,
-                },
-            )],
+            actions=[pipeline],
         ),
+        RegisterEventHandler(OnProcessExit(
+            target_action=pipeline,
+            on_exit=[EmitEvent(event=Shutdown(
+                reason='Pro450 leaf pipeline exited'))],
+        )),
     ])

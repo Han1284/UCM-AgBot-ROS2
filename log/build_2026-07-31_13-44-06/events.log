@@ -1,0 +1,50 @@
+[0.000000] (-) TimerEvent: {}
+[0.000286] (-) JobUnselected: {'identifier': 'custom_interfaces'}
+[0.000306] (-) JobUnselected: {'identifier': 'custom_package'}
+[0.000314] (-) JobUnselected: {'identifier': 'demo'}
+[0.000319] (-) JobUnselected: {'identifier': 'encoders'}
+[0.000324] (-) JobUnselected: {'identifier': 'mobile_manipulator_sim'}
+[0.000470] (-) JobUnselected: {'identifier': 'nanospec'}
+[0.000476] (-) JobUnselected: {'identifier': 'onrobot_rg_control'}
+[0.000480] (-) JobUnselected: {'identifier': 'onrobot_rg_description'}
+[0.000491] (-) JobUnselected: {'identifier': 'onrobot_rg_gazebo'}
+[0.000495] (-) JobUnselected: {'identifier': 'onrobot_rg_modbus_tcp'}
+[0.000499] (-) JobUnselected: {'identifier': 'onrobot_rg_msgs'}
+[0.000504] (-) JobUnselected: {'identifier': 'panda_sim'}
+[0.000508] (-) JobUnselected: {'identifier': 'pro450_description'}
+[0.000512] (-) JobUnselected: {'identifier': 'pro450_moveit_config'}
+[0.000517] (-) JobUnselected: {'identifier': 'realsense2_camera'}
+[0.000534] (-) JobUnselected: {'identifier': 'realsense2_camera_msgs'}
+[0.000562] (-) JobUnselected: {'identifier': 'realsense2_description'}
+[0.000569] (-) JobUnselected: {'identifier': 'robot_bringup'}
+[0.000575] (-) JobUnselected: {'identifier': 'robot_control'}
+[0.000581] (-) JobUnselected: {'identifier': 'robot_description'}
+[0.000586] (-) JobUnselected: {'identifier': 'robot_simulator'}
+[0.000591] (-) JobUnselected: {'identifier': 'rtk_gnss'}
+[0.000595] (-) JobUnselected: {'identifier': 'sllidar_ros2'}
+[0.000600] (-) JobUnselected: {'identifier': 'techman_robot_msgs'}
+[0.000605] (-) JobUnselected: {'identifier': 'tm_description'}
+[0.000609] (-) JobUnselected: {'identifier': 'tm_driver'}
+[0.000614] (-) JobUnselected: {'identifier': 'tm_get_status'}
+[0.000619] (-) JobUnselected: {'identifier': 'tm_mod_urdf'}
+[0.000624] (-) JobUnselected: {'identifier': 'tm_moveit_config_tm12'}
+[0.000628] (-) JobUnselected: {'identifier': 'tm_moveit_config_tm12x'}
+[0.000633] (-) JobUnselected: {'identifier': 'tm_moveit_config_tm14'}
+[0.000637] (-) JobUnselected: {'identifier': 'tm_moveit_config_tm14x'}
+[0.000642] (-) JobUnselected: {'identifier': 'tm_moveit_config_tm5-700'}
+[0.000646] (-) JobUnselected: {'identifier': 'tm_moveit_config_tm5-900'}
+[0.000651] (-) JobUnselected: {'identifier': 'tm_moveit_config_tm5x-700'}
+[0.000655] (-) JobUnselected: {'identifier': 'tm_moveit_config_tm5x-900'}
+[0.000660] (-) JobUnselected: {'identifier': 'tm_moveit_cpp_demo'}
+[0.000664] (-) JobUnselected: {'identifier': 'tm_msgs'}
+[0.000669] (-) JobUnselected: {'identifier': 'ui_for_debug_and_demo'}
+[0.000673] (-) JobUnselected: {'identifier': 'vectornav'}
+[0.000681] (-) JobUnselected: {'identifier': 'vectornav_msgs'}
+[0.000706] (leaf_extraction) JobQueued: {'identifier': 'leaf_extraction', 'dependencies': OrderedDict([('custom_interfaces', '/home/han1284/projects/ros2_ws/src/UCM-AgBot-ROS2/install/custom_interfaces')])}
+[0.000717] (leaf_manipulation_sim) JobQueued: {'identifier': 'leaf_manipulation_sim', 'dependencies': OrderedDict([('custom_interfaces', '/home/han1284/projects/ros2_ws/src/UCM-AgBot-ROS2/install/custom_interfaces'), ('onrobot_rg_description', '/home/han1284/projects/ros2_ws/src/UCM-AgBot-ROS2/install/onrobot_rg_description'), ('realsense2_camera_msgs', '/home/han1284/projects/ros2_ws/src/UCM-AgBot-ROS2/install/realsense2_camera_msgs'), ('tm_description', '/home/han1284/projects/ros2_ws/src/UCM-AgBot-ROS2/install/tm_description'), ('leaf_extraction', '/home/han1284/projects/ros2_ws/src/UCM-AgBot-ROS2/install/leaf_extraction'), ('realsense2_description', '/home/han1284/projects/ros2_ws/src/UCM-AgBot-ROS2/install/realsense2_description'), ('tm_moveit_config_tm5-900', '/home/han1284/projects/ros2_ws/src/UCM-AgBot-ROS2/install/tm_moveit_config_tm5-900')])}
+[0.000762] (pro450_sim) JobQueued: {'identifier': 'pro450_sim', 'dependencies': OrderedDict([('custom_interfaces', '/home/han1284/projects/ros2_ws/src/UCM-AgBot-ROS2/install/custom_interfaces'), ('onrobot_rg_description', '/home/han1284/projects/ros2_ws/src/UCM-AgBot-ROS2/install/onrobot_rg_description'), ('realsense2_camera_msgs', '/home/han1284/projects/ros2_ws/src/UCM-AgBot-ROS2/install/realsense2_camera_msgs'), ('tm_description', '/home/han1284/projects/ros2_ws/src/UCM-AgBot-ROS2/install/tm_description'), ('leaf_extraction', '/home/han1284/projects/ros2_ws/src/UCM-AgBot-ROS2/install/leaf_extraction'), ('realsense2_description', '/home/han1284/projects/ros2_ws/src/UCM-AgBot-ROS2/install/realsense2_description'), ('tm_moveit_config_tm5-900', '/home/han1284/projects/ros2_ws/src/UCM-AgBot-ROS2/install/tm_moveit_config_tm5-900'), ('leaf_manipulation_sim', '/home/han1284/projects/ros2_ws/src/UCM-AgBot-ROS2/install/leaf_manipulation_sim'), ('pro450_description', '/home/han1284/projects/ros2_ws/src/UCM-AgBot-ROS2/install/pro450_description'), ('pro450_moveit_config', '/home/han1284/projects/ros2_ws/src/UCM-AgBot-ROS2/install/pro450_moveit_config')])}
+[0.001099] (leaf_extraction) JobStarted: {'identifier': 'leaf_extraction'}
+[0.003683] (leaf_extraction) JobEnded: {'identifier': 'leaf_extraction', 'rc': 1}
+[0.014163] (leaf_manipulation_sim) JobSkipped: {'identifier': 'leaf_manipulation_sim'}
+[0.014192] (pro450_sim) JobSkipped: {'identifier': 'pro450_sim'}
+[0.014199] (-) EventReactorShutdown: {}

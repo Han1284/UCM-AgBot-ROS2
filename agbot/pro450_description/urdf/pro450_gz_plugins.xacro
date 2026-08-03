@@ -2,7 +2,7 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
   <!-- Fortress-native RGB-D sensor.  The launch bridge maps /camera_gz to
        the same ROS image, depth, and point-cloud topics as the TM5 scene. -->
-  <xacro:macro name="pro450_d435_gz_rgbd_camera" params="parent_link:='camera_bottom_screw_frame'">
+  <xacro:macro name="pro450_d435_gz_rgbd_camera" params="parent_link:='camera_depth_frame'">
     <gazebo reference="${parent_link}">
       <sensor name="d435_depth_camera" type="rgbd_camera">
         <!-- The D435 body orientation is already correct.  The Fortress
@@ -22,18 +22,46 @@
     </gazebo>
   </xacro:macro>
 
+  <!-- Chassis Orbbec stand-in for mobile SLAM (longer range for corridors).
+
+       Fortress rgbd_camera looks along +X of parent.  Parent is
+       camera_depth_frame (X-forward).  Stamp as camera_depth_optical_frame
+       so depthimage_to_laserscan / RTAB-Map use ROS optical (Z-forward);
+       URDF optical joint maps optical Z → robot forward. -->
+  <xacro:macro name="pro450_chassis_gz_rgbd_camera" params="parent_link:='camera_depth_frame' far:='8.0'">
+    <gazebo reference="${parent_link}">
+      <sensor name="chassis_rgbd_camera" type="rgbd_camera">
+        <pose>0 0 0 0 0 0</pose>
+        <gz_frame_id>camera_depth_optical_frame</gz_frame_id>
+        <always_on>true</always_on>
+        <update_rate>15.0</update_rate>
+        <visualize>true</visualize>
+        <topic>/camera_gz</topic>
+        <camera>
+          <horizontal_fov>1.396</horizontal_fov>
+          <image><width>640</width><height>480</height><format>R8G8B8</format></image>
+          <clip><near>0.15</near><far>${far}</far></clip>
+        </camera>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+
+  <xacro:macro name="pro450_arm_joint_interfaces">
+    <joint name="joint1"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+    <joint name="joint2"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+    <joint name="joint3"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+    <joint name="joint4"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+    <joint name="joint5"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+    <joint name="joint6"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+    <joint name="gripper_controller"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+  </xacro:macro>
+
   <xacro:macro name="pro450_gz_ros2_control">
     <ros2_control name="Pro450GazeboSystem" type="system">
       <hardware>
         <plugin>gz_ros2_control/GazeboSimSystem</plugin>
       </hardware>
-      <joint name="joint1"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
-      <joint name="joint2"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
-      <joint name="joint3"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
-      <joint name="joint4"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
-      <joint name="joint5"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
-      <joint name="joint6"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
-      <joint name="gripper_controller"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+      <xacro:pro450_arm_joint_interfaces/>
     </ros2_control>
     <gazebo reference="base_root"><kinematic>true</kinematic></gazebo>
     <gazebo>
@@ -44,5 +72,20 @@
         <parameters>$(find pro450_description)/config/pro450_controllers.yaml</parameters>
       </plugin>
     </gazebo>
+  </xacro:macro>
+
+  <!-- Offline / RViz control without Gazebo: mock hardware for arm + myAGV wheels. -->
+  <xacro:macro name="pro450_myagv_fake_ros2_control">
+    <ros2_control name="Pro450MyAgvFakeSystem" type="system">
+      <hardware>
+        <plugin>mock_components/GenericSystem</plugin>
+        <param name="calculate_dynamics">false</param>
+      </hardware>
+      <xacro:pro450_arm_joint_interfaces/>
+      <joint name="right_rear_wheel_joint"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+      <joint name="right_front_wheel_joint"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+      <joint name="left_front_wheel_joint"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+      <joint name="left_rear_wheel_joint"><command_interface name="position"/><state_interface name="position"/><state_interface name="velocity"/></joint>
+    </ros2_control>
   </xacro:macro>
 </robot>

@@ -290,6 +290,7 @@ def _project_to_leaf(
     maximum_width_ratio,
     maximum_tangential_ratio,
     minimum_normal_alignment,
+    minimum_face_inset_ratio,
 ):
     normal = _normalized(candidate.normal)
     projection_limit = maximum_width_ratio * candidate.local_leaf_width
@@ -307,8 +308,6 @@ def _project_to_leaf(
         for item in objects
     )
     best = None
-    lateral_tolerance = (
-        maximum_tangential_ratio * candidate.local_leaf_width)
     for collision_object in objects:
         primitive = collision_object.primitives[0]
         if primitive.type != SolidPrimitive.BOX:
@@ -336,16 +335,19 @@ def _project_to_leaf(
         travel = (face_z - local_point[2]) / local_normal[2]
         hit_x = local_point[0] + travel * local_normal[0]
         hit_y = local_point[1] + travel * local_normal[1]
-        outside_x = max(abs(hit_x) - half_size[0], 0.0)
-        outside_y = max(abs(hit_y) - half_size[1], 0.0)
-        if math.hypot(outside_x, outside_y) > lateral_tolerance:
+        # Trex interior rule: never clamp a near-miss onto the face rim.
+        # Contacts must land inside an inset of the collision-proxy face so
+        # published markers stay away from the leaf edge.
+        inset_x = max(
+            half_size[0] * minimum_face_inset_ratio, 1e-4)
+        inset_y = max(
+            half_size[1] * minimum_face_inset_ratio, 1e-4)
+        if abs(hit_x) > half_size[0] - inset_x:
+            continue
+        if abs(hit_y) > half_size[1] - inset_y:
             continue
 
-        local_hit = (
-            min(max(hit_x, -half_size[0]), half_size[0]),
-            min(max(hit_y, -half_size[1]), half_size[1]),
-            face_z,
-        )
+        local_hit = (hit_x, hit_y, face_z)
         rotated_hit = rotate_point(pose.orientation, local_hit)
         world_hit = (
             pose.position.x + rotated_hit[0],
@@ -392,6 +394,7 @@ def project_candidate_groups(
     maximum_width_ratio=1.25,
     maximum_tangential_ratio=0.35,
     minimum_normal_alignment=0.35,
+    minimum_face_inset_ratio=0.20,
 ):
     """Assign each perceived leaf to one proxy, then project all its points."""
     collision_groups = leaf_collision_groups()
@@ -413,6 +416,7 @@ def project_candidate_groups(
                     maximum_width_ratio,
                     maximum_tangential_ratio,
                     minimum_normal_alignment,
+                    minimum_face_inset_ratio,
                 )
                 for candidate in group
             ]

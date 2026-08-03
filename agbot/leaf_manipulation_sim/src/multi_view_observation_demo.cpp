@@ -204,7 +204,9 @@ public:
       initial_capture->c_str());
     RCLCPP_INFO(
       node_->get_logger(),
-      "Selecting one quality-validation NBV before finalizing candidates");
+      "Selecting one geometry-diverse validation NBV by default; "
+      "additional NBVs are requested only when candidates are insufficient "
+      "or the fused surface has not converged");
 
     auto views = waitForObservationViews(consumed_views_revision, 5s);
     if (!views || views->second.poses.empty()) {
@@ -216,12 +218,23 @@ public:
 
     int captured_views = 1;
     const int extra_limit = std::max(0, maximum_views_ - 1);
+    bool candidates_sufficient = false;
     for (int observation_index = 0;
       observation_index < extra_limit && rclcpp::ok();
       ++observation_index)
     {
       if (observation_index > 0) {
         views = waitForObservationViews(consumed_views_revision, 5s);
+        if (!views || views->second.poses.empty()) {
+          // Candidate shortage is supposed to buy more NBV coverage.  Give
+          // perception one longer wait before abandoning the loop, instead of
+          // finalizing a thin Trex-compliant set early.
+          RCLCPP_WARN(
+            node_->get_logger(),
+            "No updated peripheral observation views yet; waiting longer "
+            "because candidates are still insufficient");
+          views = waitForObservationViews(consumed_views_revision, 10s);
+        }
         if (!views || views->second.poses.empty()) {
           RCLCPP_WARN(
             node_->get_logger(),
@@ -236,10 +249,6 @@ public:
       int pose_index = 0;
       auto ordered_poses =
         orderByMotionFromCurrentCamera(move_group, views->second);
-      const auto local_poses =
-        localParallaxViewsFromCurrentCamera(move_group);
-      ordered_poses.insert(
-        ordered_poses.begin(), local_poses.begin(), local_poses.end());
       for (const auto& pose : ordered_poses) {
         ++pose_index;
         if (moveToCameraPose(
@@ -289,7 +298,12 @@ public:
         capture->find("ready=true") != std::string::npos;
       const bool has_candidates =
         capture->find("projected_candidates=0;") == std::string::npos;
-      if (ready && has_candidates)
+      candidates_sufficient =
+        capture->find("sufficient=True") != std::string::npos ||
+        capture->find("sufficient=true") != std::string::npos;
+      // Stop only when perception itself says the Trex-compliant set is
+      // ready.  A thin candidate list must continue requesting NBV.
+      if (ready && has_candidates && candidates_sufficient)
       {
         RCLCPP_INFO(
           node_->get_logger(),
@@ -302,6 +316,13 @@ public:
           node_->get_logger(),
           "Perception reported ready without any grasp candidates; "
           "continuing to finalization instead of reporting false success");
+      }
+      if (!candidates_sufficient) {
+        RCLCPP_INFO(
+          node_->get_logger(),
+          "Candidate set still insufficient after %d views; "
+          "requesting another NBV for more canopy coverage",
+          captured_views);
       }
     }
     const bool finalized = finalizeCandidates();

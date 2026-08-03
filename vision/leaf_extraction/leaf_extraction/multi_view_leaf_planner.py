@@ -20,7 +20,7 @@ import rclpy
 from rclpy.time import Time
 from scipy.spatial import ConvexHull, cKDTree
 from scipy.spatial.transform import Rotation
-from sensor_msgs.msg import PointCloud2
+from sensor_msgs.msg import PointCloud2, PointField
 from std_srvs.srv import Trigger
 from tf2_ros import Buffer, TransformException, TransformListener
 from ultralytics import YOLO
@@ -83,6 +83,7 @@ class GraspCandidate:
     edge_margin_ratio: float
     clearance: float
     longitudinal_ratio: float
+    tip_entry_depth: float
     projection_distance: float = 0.0
     collision_leaf_id: str = ''
 
@@ -130,6 +131,10 @@ class MultiViewLeafPlanner(Node):
         self.declare_parameter('voxel_size', 0.004)
         self.declare_parameter('candidate_count', 8)
         self.declare_parameter('per_leaf_candidate_count', 4)
+        self.declare_parameter('minimum_candidate_separation', 0.04)
+        self.declare_parameter(
+            'minimum_root_to_tip_approach_angle_degrees', 45.0)
+        self.declare_parameter('gripper_internal_depth', 0.032)
         self.declare_parameter('minimum_projected_candidates', 6)
         self.declare_parameter('minimum_candidate_leaves', 2)
         self.declare_parameter('minimum_longitudinal_ratio', 0.30)
@@ -142,6 +147,7 @@ class MultiViewLeafPlanner(Node):
         self.declare_parameter('minimum_surface_views', 2)
         self.declare_parameter('surface_support_voxels', 2.5)
         self.declare_parameter('minimum_edge_margin_ratio', 0.15)
+        self.declare_parameter('minimum_face_inset_ratio', 0.15)
         self.declare_parameter('approach_distance', 0.07)
         self.declare_parameter('minimum_clearance', 0.025)
         self.declare_parameter('view_lateral_offset', 0.10)
@@ -191,6 +197,13 @@ class MultiViewLeafPlanner(Node):
             self.get_parameter('candidate_count').value)
         self.per_leaf_candidate_count = int(
             self.get_parameter('per_leaf_candidate_count').value)
+        self.minimum_candidate_separation = self.scene_scale * float(
+            self.get_parameter('minimum_candidate_separation').value)
+        self.minimum_root_to_tip_approach_angle_degrees = float(
+            self.get_parameter(
+                'minimum_root_to_tip_approach_angle_degrees').value)
+        self.gripper_internal_depth = float(
+            self.get_parameter('gripper_internal_depth').value)
         self.minimum_projected_candidates = int(
             self.get_parameter('minimum_projected_candidates').value)
         self.minimum_candidate_leaves = int(
@@ -209,6 +222,8 @@ class MultiViewLeafPlanner(Node):
             self.get_parameter('surface_support_voxels').value)
         self.minimum_edge_margin_ratio = float(
             self.get_parameter('minimum_edge_margin_ratio').value)
+        self.minimum_face_inset_ratio = float(
+            self.get_parameter('minimum_face_inset_ratio').value)
         self.approach_distance = self.scene_scale * float(
             self.get_parameter('approach_distance').value)
         self.minimum_clearance = self.scene_scale * float(
@@ -322,6 +337,10 @@ class MultiViewLeafPlanner(Node):
             '/leaf_perception/projected_grasp_candidates',
             durable,
         )
+        # Retain the complete multi-view reconstruction for RViz.  The live
+        # D435 cloud remains available separately on ``point_cloud_topic``.
+        self.fused_canopy_publisher = self.create_publisher(
+            PointCloud2, '/leaf_perception/fused_canopy', durable)
         self.get_logger().info(
             'Multi-view leaf planner ready; move to a stable observation pose '
             'and call /leaf_perception/capture_view')
@@ -437,6 +456,10 @@ class MultiViewLeafPlanner(Node):
         self._associate_observations(observations)
         self.view_count += 1
         all_points = self._fused_canopy_points()
+        quality_fused_points = self._quality_fused_canopy_points()
+        self._publish_xyz_cloud(
+            self.fused_canopy_publisher, quality_fused_points,
+            self.latest_cloud)
         self._update_conservative_bounds(all_points)
         self._publish_canopy_bounds(all_points, self.latest_cloud)
         self.last_best_completion_gain = self._publish_observation_views(
@@ -468,7 +491,7 @@ class MultiViewLeafPlanner(Node):
         )
         # The overview may create provisional candidates for directing NBV,
         # but a final MTC target always needs one independent validation view.
-        enough_views = self.view_count >= 2
+        enough_views = self.view_count >= self.required_views
         lower = np.percentile(all_points, 2.0, axis=0)
         upper = np.percentile(all_points, 98.0, axis=0)
         canopy_centre = 0.5 * (lower + upper)
@@ -479,8 +502,21 @@ class MultiViewLeafPlanner(Node):
         unresolved_frontiers = len(self._unresolved_frontier_targets(
             canopy_centre, canopy_span))
         forced = self.view_count >= self.maximum_views
+        quality_converged = bool(
+            self.low_surface_gain_streak >= self.low_surface_gain_patience
+            or self.last_best_completion_gain
+            < self.minimum_nbv_completion_gain
+        )
+        # Do not stop while large parts of the canopy remain outside the
+        # fused cloud, and never stop while the Trex-compliant candidate set
+        # is still thin.  Extra NBVs are how coverage and contact count grow;
+        # do not weaken Trex to pass finalize early.
+        frontiers_resolved = unresolved_frontiers == 0
         completion_condition = bool(
-            enough_views and candidate_set_sufficient)
+            enough_views
+            and candidate_set_sufficient
+            and frontiers_resolved
+            and (quality_converged or forced))
         self.selection_ready = self._ready_with_candidates(
             candidates, completion_condition)
         if self.selection_ready and candidates:
@@ -492,6 +528,8 @@ class MultiViewLeafPlanner(Node):
             f'projected_candidates={len(candidates)}; '
             f'candidate_leaves={candidate_leaf_count}; '
             f'sufficient={candidate_set_sufficient}; '
+            f'quality_converged={quality_converged}; '
+            f'frontiers_resolved={frontiers_resolved}; '
             f'unresolved_frontiers={unresolved_frontiers}; '
             f'novel_voxel_gain={surface_gain:.3f}; '
             f'next_completion_gain='
@@ -516,10 +554,10 @@ class MultiViewLeafPlanner(Node):
             len(candidates) >= self.minimum_projected_candidates
             and candidate_leaf_count >= self.minimum_candidate_leaves
         )
-        if self.view_count < 2 or not sufficient:
+        if self.view_count < self.required_views or not sufficient:
             response.success = False
             response.message = (
-                f'Only {self.view_count} valid views, '
+                f'Only {self.view_count}/{self.required_views} valid views, '
                 f'{len(candidates)} projected candidates and '
                 f'{candidate_leaf_count} candidate leaves are available; '
                 f'need {self.minimum_projected_candidates} candidates '
@@ -801,6 +839,55 @@ class MultiViewLeafPlanner(Node):
         ]
         return np.concatenate(fused, axis=0)
 
+    def _quality_fused_canopy_points(self) -> np.ndarray:
+        """Return only surface points corroborated across independent views."""
+        fused = [
+            self._consensus_surface_points(track)
+            for track in self.tracks if track.observations
+        ]
+        fused = [points for points in fused if points.size]
+        if not fused:
+            return np.empty((0, 3))
+        return np.concatenate(fused, axis=0)
+
+    def _publish_xyz_cloud(
+        self,
+        publisher,
+        points: np.ndarray,
+        source_cloud: PointCloud2,
+    ) -> None:
+        """Publish a latched XYZ cloud in the fixed planning frame."""
+        finite_points = np.asarray(points, dtype=np.float32)
+        if finite_points.size:
+            finite_points = finite_points.reshape((-1, 3))
+            finite_points = finite_points[
+                np.all(np.isfinite(finite_points), axis=1)]
+        else:
+            finite_points = np.empty((0, 3), dtype=np.float32)
+
+        cloud = PointCloud2()
+        cloud.header.stamp = source_cloud.header.stamp
+        cloud.header.frame_id = self.target_frame
+        cloud.height = 1
+        cloud.width = int(finite_points.shape[0])
+        cloud.fields = [
+            PointField(
+                name='x', offset=0,
+                datatype=PointField.FLOAT32, count=1),
+            PointField(
+                name='y', offset=4,
+                datatype=PointField.FLOAT32, count=1),
+            PointField(
+                name='z', offset=8,
+                datatype=PointField.FLOAT32, count=1),
+        ]
+        cloud.is_bigendian = False
+        cloud.point_step = 12
+        cloud.row_step = cloud.point_step * cloud.width
+        cloud.is_dense = True
+        cloud.data = np.ascontiguousarray(finite_points).tobytes()
+        publisher.publish(cloud)
+
     def _consensus_surface_points(self, track: LeafTrack) -> np.ndarray:
         """Keep points supported by independent views on a real surface."""
         if not track.observations:
@@ -927,6 +1014,7 @@ class MultiViewLeafPlanner(Node):
         projections, assignments = project_candidate_groups(
             projection_inputs,
             maximum_width_ratio=self.maximum_projection_width_ratio,
+            minimum_face_inset_ratio=self.minimum_face_inset_ratio,
         )
         projected_per_leaf = {}
         for index, projection in projections.items():
@@ -946,11 +1034,15 @@ class MultiViewLeafPlanner(Node):
             projected_per_leaf.setdefault(
                 candidate.leaf_id, []).append(candidate)
         per_leaf_candidates = []
+        spatially_diverse_counts = {}
         for leaf_id in sorted(projected_per_leaf):
             leaf_candidates = projected_per_leaf[leaf_id]
             leaf_candidates.sort(key=lambda item: item.score, reverse=True)
-            per_leaf_candidates.append(
-                leaf_candidates[:self.per_leaf_candidate_count])
+            spatially_diverse = self._spatially_diverse_candidates(
+                leaf_candidates, self.per_leaf_candidate_count)
+            spatially_diverse_counts[leaf_id] = len(spatially_diverse)
+            if spatially_diverse:
+                per_leaf_candidates.append(spatially_diverse)
 
         projected_counts = {
             leaf_id: len(items)
@@ -963,7 +1055,10 @@ class MultiViewLeafPlanner(Node):
             f'raw={raw_candidate_counts}; '
             f'proxy_median_gaps={proxy_gap_audit}; '
             f'projection_assignments={assignments}; '
-            f'projected={projected_counts}')
+            f'projected={projected_counts}; '
+            f'spatially_diverse={spatially_diverse_counts}; '
+            f'minimum_separation='
+            f'{self.minimum_candidate_separation:.4f} m')
 
         # Round-robin by within-leaf rank. This prevents one large, easy leaf
         # from consuming the entire global shortlist.
@@ -978,6 +1073,25 @@ class MultiViewLeafPlanner(Node):
             if len(candidates) >= self.candidate_count:
                 break
         return candidates[:self.candidate_count]
+
+    def _spatially_diverse_candidates(
+        self,
+        ranked_candidates: Sequence[GraspCandidate],
+        limit: int,
+    ) -> List[GraspCandidate]:
+        """Keep ranked contact points that cover distinct leaf regions."""
+        selected: List[GraspCandidate] = []
+        for candidate in ranked_candidates:
+            if any(
+                np.linalg.norm(candidate.point - other.point)
+                < self.minimum_candidate_separation
+                for other in selected
+            ):
+                continue
+            selected.append(candidate)
+            if len(selected) >= limit:
+                break
+        return selected
 
     @staticmethod
     def _local_leaf_width(
@@ -1013,7 +1127,17 @@ class MultiViewLeafPlanner(Node):
         values, vectors = np.linalg.eigh(covariance)
         order = np.argsort(values)
         normal = normalized(vectors[:, order[0]])
-        if normal[2] < 0.0:
+        # A PCA normal is sign-ambiguous.  Align the F100 local +X closing
+        # direction consistently with the observed camera-to-leaf direction.
+        # Cartesian approach remains in the leaf plane along gripper local +Y.
+        camera_to_leaf = np.sum([
+            centre - observation.camera_position
+            for observation in track.observations
+        ], axis=0)
+        if np.linalg.norm(camera_to_leaf) > 1e-6:
+            if float(np.dot(normal, camera_to_leaf)) < 0.0:
+                normal = -normal
+        elif normal[2] < 0.0:
             normal = -normal
         tangent = normalized(vectors[:, order[-1]])
         bitangent = normalized(np.cross(normal, tangent))
@@ -1184,6 +1308,10 @@ class MultiViewLeafPlanner(Node):
                 edge_margin_ratio=edge_margin_ratio,
                 clearance=clearance,
                 longitudinal_ratio=longitudinal_ratio,
+                tip_entry_depth=max(
+                    0.0,
+                    longitudinal_max - float(projected[index, 0]),
+                ),
             ))
         results.sort(key=lambda item: item.score, reverse=True)
         return results[:max(3 * self.per_leaf_candidate_count, 12)]
@@ -1806,18 +1934,16 @@ class MultiViewLeafPlanner(Node):
                 reachability_prior = 0.0
                 history_distance = float('inf')
 
-            redundant = (
+            angularly_redundant = (
                 angular_separation
-                < self.minimum_nbv_angular_separation
-                and history_distance < self.minimum_nbv_translation
-            )
-            if (
-                redundant
-                and completion_gain < self.minimum_nbv_completion_gain
-                and frontier_gain < 0.25
-            ):
+                < self.minimum_nbv_angular_separation)
+            positionally_redundant = (
+                history_distance < self.minimum_nbv_translation)
+            # Fusion needs both a changed line of sight and a real camera
+            # baseline.  Quality scores may rank valid views, but must not
+            # allow a nearly identical pose to satisfy required_views.
+            if angularly_redundant or positionally_redundant:
                 return None
-            redundancy_penalty = 1.0 if redundant else 0.0
             coverage_guard = (
                 1.0
                 if coverage >= self.minimum_view_coverage
@@ -1831,7 +1957,6 @@ class MultiViewLeafPlanner(Node):
                 + 1.0 * coverage_guard
                 + 0.8 * reachability_prior
                 - 0.25 * motion_cost
-                - 2.0 * redundancy_penalty
             )
             return (
                 score,
@@ -2109,16 +2234,40 @@ class MultiViewLeafPlanner(Node):
     ) -> List[Tuple[np.ndarray, float, float]]:
         base = self._candidate_orientation_base(candidate)
         orientations = []
-        for tilt in (
-            0.0, -10.0, 10.0, -20.0, 20.0, -30.0, 30.0
-        ):
+        roll_candidates = (
+            -90.0, 90.0,
+            -60.0, 60.0, -120.0, 120.0,
+            -45.0, 45.0, -135.0, 135.0, 180.0,
+        )
+        allowed_rolls = []
+        for roll in roll_candidates:
+            longitudinal_component = math.cos(math.radians(roll))
+            if longitudinal_component > 1e-6:
+                root_to_tip_angle = math.degrees(math.acos(
+                    min(1.0, longitudinal_component)))
+                if (
+                    root_to_tip_angle + 1e-6
+                    < self.minimum_root_to_tip_approach_angle_degrees
+                ):
+                    continue
+            elif longitudinal_component < -1e-6:
+                required_internal_depth = (
+                    candidate.tip_entry_depth
+                    / -longitudinal_component
+                )
+                if (
+                    required_internal_depth
+                    > self.gripper_internal_depth + 1e-6
+                ):
+                    continue
+            allowed_rolls.append(roll)
+        for tilt in (0.0, -15.0, 15.0):
             tilted = base * Rotation.from_euler('Y', tilt, degrees=True)
-            # Test the four orthogonal in-plane approach directions before
-            # diagonals.  +90 deg is not interchangeable with -90 deg here:
-            # it reverses the Cartesian approach direction along the leaf.
-            for roll in (
-                0.0, -90.0, -180.0, 90.0, -45.0, -135.0
-            ):
+            # F100 local +Y is the Cartesian approach axis.  At +/-90 deg it
+            # crosses the leaf width.  Oblique 45/60-degree entries can still
+            # use free space beside a leaf, while 0/180-degree entries are
+            # rejected because they sweep a finger along the stem-to-tip axis.
+            for roll in allowed_rolls:
                 quaternion = (
                     tilted * Rotation.from_euler(
                         'X', roll, degrees=True)).as_quat()
@@ -2198,6 +2347,7 @@ class MultiViewLeafPlanner(Node):
         clear.header.stamp = cloud.header.stamp
         clear.action = Marker.DELETEALL
         markers.markers.append(clear)
+        stem_arrows_published = set()
         for index, candidate in enumerate(candidates):
             sphere = Marker()
             sphere.header.frame_id = self.target_frame
@@ -2239,6 +2389,43 @@ class MultiViewLeafPlanner(Node):
             label.color.a = 1.0
             label.text = str(index + 1)
             markers.markers.append(label)
+            if candidate.leaf_id not in stem_arrows_published:
+                stem_arrows_published.add(candidate.leaf_id)
+                stem = Marker()
+                stem.header = sphere.header
+                stem.ns = 'leaf_stem_direction'
+                stem.id = int(candidate.leaf_id)
+                stem.type = Marker.ARROW
+                stem.action = Marker.ADD
+                stem.points = [
+                    Point(
+                        x=float(candidate.point[0]),
+                        y=float(candidate.point[1]),
+                        z=float(candidate.point[2]),
+                    ),
+                    Point(
+                        x=float(
+                            candidate.point[0]
+                            - 0.05 * self.scene_scale
+                            * candidate.tangent[0]),
+                        y=float(
+                            candidate.point[1]
+                            - 0.05 * self.scene_scale
+                            * candidate.tangent[1]),
+                        z=float(
+                            candidate.point[2]
+                            - 0.05 * self.scene_scale
+                            * candidate.tangent[2]),
+                    ),
+                ]
+                stem.scale.x = 0.005 * self.scene_scale
+                stem.scale.y = 0.010 * self.scene_scale
+                stem.scale.z = 0.014 * self.scene_scale
+                stem.color.r = 0.85
+                stem.color.g = 0.10
+                stem.color.b = 0.85
+                stem.color.a = 1.0
+                markers.markers.append(stem)
         self.markers_publisher.publish(markers)
 
 

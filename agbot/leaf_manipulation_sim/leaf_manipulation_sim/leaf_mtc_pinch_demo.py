@@ -2,8 +2,7 @@
 
 """Publish ranked MoveIt Task Constructor solutions for the leaf pinch pose."""
 
-from dataclasses import dataclass
-from copy import deepcopy
+from dataclasses import dataclass, replace
 import json
 import math
 import os
@@ -23,14 +22,8 @@ from geometry_msgs.msg import (
     Vector3,
     Vector3Stamped,
 )
-from moveit_msgs.msg import AllowedCollisionEntry, MoveItErrorCodes
-from moveit_msgs.msg import PlanningSceneComponents
-from moveit_msgs.srv import (
-    ApplyPlanningScene,
-    GetPlanningScene,
-    GetPositionIK,
-    GetStateValidity,
-)
+from moveit_msgs.msg import MoveItErrorCodes
+from moveit_msgs.srv import GetPositionIK
 from moveit.task_constructor import core, stages
 from rclpy.qos import DurabilityPolicy, QoSProfile
 from std_msgs.msg import Header
@@ -54,17 +47,43 @@ IS_PRO450 = ROBOT_PROFILE == 'pro450_f100'
 ARM_GROUP = 'pro450_arm' if IS_PRO450 else 'tmr_arm'
 GRIPPER_GROUP = 'f100_gripper' if IS_PRO450 else 'rg2_gripper'
 IK_LINK = 'gripper_base' if IS_PRO450 else 'gripper'
+PLANNER_ID = (
+    'RRTConnectkConfigDefault' if IS_PRO450 else 'RRTConnect'
+)
+# F100 contact pads and their proximal linkage all enter the leaf proxy
+# volume during the final millimetres and while closing.  Exempt the whole
+# finger assembly against the *selected* leaf only; arm, camera, pot and
+# neighbouring leaves remain strict.
 FINGERTIP_LINKS = (
-    ['gripper_left1', 'gripper_right1']
+    [
+        'gripper_left1',
+        'gripper_left2',
+        'gripper_left3',
+        'gripper_right1',
+        'gripper_right2',
+        'gripper_right3',
+    ]
     if IS_PRO450 else ['left_inner_finger', 'right_inner_finger']
 )
-FINGERTIP_CONTACT_OFFSET = 0.090 if IS_PRO450 else 0.035
-OPEN_GRIPPER_POSITION = 0.0 if IS_PRO450 else 0.10
-CLOSED_GRIPPER_POSITION = 0.68
+FINGERTIP_CONTACT_OFFSET = 0.096 if IS_PRO450 else 0.035
+CONTACT_ENTRY_DISTANCE = 0.005 if IS_PRO450 else 0.0
+# In the imported F100 linkage, increasing ``gripper_controller`` increases
+# the distance between the two fingertip pivots (about 16 mm at 0 rad,
+# 22.1 mm at 0.05 rad, and 96.5 mm at 0.68 rad).  A 0.20 rad operational
+# opening leaves substantially more entry clearance than 0.05 rad while its
+# full open geometry is still checked against every non-target object.
+OPEN_GRIPPER_POSITION = 0.20 if IS_PRO450 else 0.10
+CLOSED_GRIPPER_POSITION = 0.0 if IS_PRO450 else 0.68
+# Do not turn the F100 opening into another full search dimension.  The
+# perception clearance selects one primary opening and, only when needed, one
+# narrower fallback.  MoveIt still validates the complete gripper mesh.
+F100_APPROACH_POSITIONS = (0.20, 0.12, 0.08, 0.05)
+F100_CORRIDOR_SAFETY_MARGIN = 0.010
 # Pro450 candidate orientations encode the observed leaf-surface normal as
-# gripper local +X (see _quaternion_local_x and surface projection below).
-# Retreat and Cartesian approach must use that same normal, not local +Y.
-APPROACH_AXIS = (1.0, 0.0, 0.0) if IS_PRO450 else (0.0, 0.0, 1.0)
+# gripper local +X, which is the F100 closing direction.  The F100 fingers
+# extend forward from gripper_base along local +Y, so both the calibrated
+# gripper-base-to-fingertip offset and the Cartesian approach use +Y.
+APPROACH_AXIS = (0.0, 1.0, 0.0) if IS_PRO450 else (0.0, 0.0, 1.0)
 
 
 @dataclass
@@ -85,6 +104,7 @@ class RankedCandidate:
     edge_margin: float
     local_leaf_width: float
     clearance: float
+    gripper_position: float = OPEN_GRIPPER_POSITION
     longitudinal_ratio: float = 0.0
     collision_leaf_id: str = ''
     pregrasp_distance: float = 0.035
@@ -108,6 +128,45 @@ def quaternion_from_rpy(roll, pitch, yaw):
         z=cr * cp * sy - sr * sp * cy,
         w=cr * cp * cy + sr * sp * sy,
     )
+
+
+def f100_fingertip_pivot_span(position):
+    """Return the F100 fingertip-pivot span used as an opening proxy."""
+    return (
+        0.036
+        - 0.020 * math.cos(position)
+        + 0.121 * math.sin(position)
+    )
+
+
+def approach_gripper_positions(candidate):
+    """Select a primary F100 corridor opening and one narrower fallback."""
+    if not IS_PRO450:
+        return (OPEN_GRIPPER_POSITION,)
+
+    # ``clearance`` is the centre-line distance to surrounding leaf points.
+    # Reserve 5 mm on each side before comparing its diameter with the F100
+    # pivot span.  This is only a search-order heuristic: collision-aware IK
+    # and MTC remain the authoritative geometry checks.
+    usable_span = max(
+        0.0,
+        2.0 * max(0.0, candidate.clearance)
+        - F100_CORRIDOR_SAFETY_MARGIN,
+    )
+    fitting = [
+        position
+        for position in F100_APPROACH_POSITIONS
+        if f100_fingertip_pivot_span(position) <= usable_span
+    ]
+    primary = fitting[0] if fitting else F100_APPROACH_POSITIONS[-1]
+    narrow_fallback = F100_APPROACH_POSITIONS[-1]
+    # Spend the one permitted retry on a materially different geometry.  An
+    # adjacent level (for example 0.20 -> 0.12 rad) did not cover the narrow
+    # passage that motivated adaptive aperture planning, while trying every
+    # intermediate level would multiply the search budget.
+    if primary != narrow_fallback:
+        return (primary, narrow_fallback)
+    return (primary,)
 
 
 def gripper_goal(position):
@@ -367,7 +426,15 @@ def project_candidates_to_leaf_surface(candidates, maximum_width_ratio):
             contact_pose.position.z = projected[2]
             contact_pose.orientation = candidate.target.pose.orientation
             candidate.contact_point = projected
-            candidate.target.pose = _retreat_to_pregrasp(contact_pose)
+            # Projection changes only the verified surface contact point.
+            # Preserve the Pro450 gripper-base-to-fingertip calibration and
+            # the candidate's dynamic approach stroke when rebuilding its IK
+            # target; the old 35 mm default placed the F100 body inside the
+            # plant after every collision-surface projection.
+            candidate.target.pose = _retreat_to_pregrasp(
+                contact_pose,
+                FINGERTIP_CONTACT_OFFSET + candidate.pregrasp_distance,
+            )
             candidate.associated_leaf = leaf_name
             candidate.projection_distance = displacement
             projected_candidates.append(candidate)
@@ -508,18 +575,13 @@ def wait_for_ranked_candidates():
         ))
 
     orientation_order = {
-        (0.0, 0.0): 0,
-        (0.0, -90.0): 1,
-        (0.0, -180.0): 2,
-        (0.0, 90.0): 3,
-        (-10.0, 0.0): 4,
-        (10.0, 0.0): 5,
-        (-20.0, 0.0): 6,
-        (20.0, 0.0): 7,
-        (-30.0, 0.0): 8,
-        (30.0, 0.0): 9,
-        (0.0, -45.0): 10,
-        (0.0, -135.0): 11,
+        (tilt, roll): 11 * tilt_rank + roll_rank
+        for tilt_rank, tilt in enumerate((0.0, -15.0, 15.0))
+        for roll_rank, roll in enumerate((
+            -90.0, 90.0,
+            -60.0, 60.0, -120.0, 120.0,
+            -45.0, 45.0, -135.0, 135.0, 180.0,
+        ))
     }
     candidates.sort(
         key=lambda item: (
@@ -540,13 +602,6 @@ class IkServicePrechecker:
     def __init__(self):
         self.node = rclpy.create_node('leaf_mtc_ik_prechecker')
         self.client = self.node.create_client(GetPositionIK, '/compute_ik')
-        self.validity_client = self.node.create_client(
-            GetStateValidity, '/check_state_validity')
-        self.get_scene_client = self.node.create_client(
-            GetPlanningScene, '/get_planning_scene')
-        self.apply_scene_client = self.node.create_client(
-            ApplyPlanningScene, '/apply_planning_scene')
-        self._original_acm = None
         self.counts = {
             'bare_success': 0,
             'bare_failure': 0,
@@ -554,97 +609,13 @@ class IkServicePrechecker:
             'collision_success': 0,
             'collision_failure': 0,
             'collision_timeout': 0,
-            'collision_deferred': 0,
         }
 
     def wait_for_service(self, timeout_sec=5.0):
-        if not self.client.wait_for_service(timeout_sec=timeout_sec):
-            return False
-        if IS_PRO450:
-            return all((
-                self.validity_client.wait_for_service(
-                    timeout_sec=timeout_sec),
-                self.get_scene_client.wait_for_service(
-                    timeout_sec=timeout_sec),
-                self.apply_scene_client.wait_for_service(
-                    timeout_sec=timeout_sec),
-            ))
-        return True
+        return self.client.wait_for_service(timeout_sec=timeout_sec)
 
     def close(self):
         self.node.destroy_node()
-
-    def set_leaf_fingertip_collisions(self, allow, timeout_sec=2.0):
-        """Temporarily update only leaf-segment/fingertip ACM pairs."""
-        if not IS_PRO450:
-            return True
-        if allow:
-            request = GetPlanningScene.Request()
-            request.components.components = (
-                PlanningSceneComponents.ALLOWED_COLLISION_MATRIX)
-            future = self.get_scene_client.call_async(request)
-            rclpy.spin_until_future_complete(
-                self.node, future, timeout_sec=timeout_sec)
-            if not future.done() or future.result() is None:
-                return False
-            self._original_acm = deepcopy(
-                future.result().scene.allowed_collision_matrix)
-            matrix = deepcopy(self._original_acm)
-            leaf_ids = [
-                collision_object.id
-                for collision_object in plant_collision_objects()
-                if collision_object.id.startswith('leaf_')
-            ]
-            required_names = list(dict.fromkeys(
-                list(matrix.entry_names) + leaf_ids + FINGERTIP_LINKS))
-            old_names = list(matrix.entry_names)
-            old_rows = {
-                name: list(matrix.entry_values[index].enabled)
-                for index, name in enumerate(old_names)
-            }
-            rows = []
-            for row_name in required_names:
-                row = [
-                    bool(
-                        old_rows.get(row_name, [])[old_names.index(column_name)]
-                    )
-                    if (
-                        row_name in old_rows
-                        and column_name in old_names
-                        and old_names.index(column_name)
-                        < len(old_rows[row_name])
-                    )
-                    else False
-                    for column_name in required_names
-                ]
-                rows.append(AllowedCollisionEntry(enabled=row))
-            matrix.entry_names = required_names
-            matrix.entry_values = rows
-            for leaf_id in leaf_ids:
-                leaf_index = required_names.index(leaf_id)
-                for fingertip in FINGERTIP_LINKS:
-                    tip_index = required_names.index(fingertip)
-                    matrix.entry_values[leaf_index].enabled[tip_index] = True
-                    matrix.entry_values[tip_index].enabled[leaf_index] = True
-        else:
-            if self._original_acm is None:
-                return True
-            matrix = self._original_acm
-
-        request = ApplyPlanningScene.Request()
-        request.scene.is_diff = True
-        request.scene.allowed_collision_matrix = matrix
-        future = self.apply_scene_client.call_async(request)
-        rclpy.spin_until_future_complete(
-            self.node, future, timeout_sec=timeout_sec)
-        success = bool(
-            future.done()
-            and future.result() is not None
-            and future.result().success
-        )
-        if success and not allow:
-            self._original_acm = None
-        return success
 
     def _solve(self, candidate, avoid_collisions, timeout_sec):
         request = GetPositionIK.Request()
@@ -653,6 +624,11 @@ class IkServicePrechecker:
         ik_request.ik_link_name = IK_LINK
         ik_request.pose_stamped = candidate.target
         ik_request.robot_state.is_diff = True
+        if IS_PRO450:
+            ik_request.robot_state.joint_state.name = [
+                'gripper_controller']
+            ik_request.robot_state.joint_state.position = [
+                candidate.gripper_position]
         ik_request.avoid_collisions = avoid_collisions
         ik_request.timeout.sec = 0
         ik_request.timeout.nanosec = int(0.15 * 1e9)
@@ -681,48 +657,6 @@ class IkServicePrechecker:
             self.counts['bare_failure'] += 1
             return False, f'裸 IK 无解 {bare_status}'
         self.counts['bare_success'] += 1
-
-        # /compute_ik cannot carry a per-request AllowedCollisionMatrix. For
-        # Pro450, classify the actual contact pairs returned by MoveIt and
-        # admit only collision-free states or the exact target-leaf/fingertip
-        # pairs that the following MTC task allows. All self, wrist, camera,
-        # pot, floor and non-target-leaf collisions remain rejected here.
-        if IS_PRO450 and candidate.collision_leaf_id:
-            request = GetStateValidity.Request()
-            request.group_name = ARM_GROUP
-            request.robot_state = bare_solution
-            future = self.validity_client.call_async(request)
-            rclpy.spin_until_future_complete(
-                self.node, future, timeout_sec=timeout_sec)
-            if not future.done():
-                self.validity_client.remove_pending_request(future)
-                self.counts['collision_timeout'] += 1
-                return False, '碰撞对检查服务超时'
-            response = future.result()
-            if response.valid:
-                self.counts['collision_success'] += 1
-                return True, bare_solution
-            target_prefix = f'{candidate.collision_leaf_id}_'
-            allowed = True
-            for contact in response.contacts:
-                bodies = (
-                    contact.contact_body_1,
-                    contact.contact_body_2,
-                )
-                leaf_body = next(
-                    (body for body in bodies
-                     if body.startswith(target_prefix)),
-                    None,
-                )
-                robot_body = bodies[1] if leaf_body == bodies[0] else bodies[0]
-                if leaf_body is None or robot_body not in FINGERTIP_LINKS:
-                    allowed = False
-                    break
-            if response.contacts and allowed:
-                self.counts['collision_deferred'] += 1
-                return True, bare_solution
-            self.counts['collision_failure'] += 1
-            return False, '存在非目标叶或非指尖碰撞'
 
         collision_status, solution = self._solve(
             candidate, True, timeout_sec)
@@ -761,6 +695,7 @@ def _candidate_record(candidate):
         'edge_margin': candidate.edge_margin,
         'local_leaf_width': candidate.local_leaf_width,
         'clearance': candidate.clearance,
+        'gripper_position': candidate.gripper_position,
         'longitudinal_ratio': candidate.longitudinal_ratio,
         'collision_leaf_id': candidate.collision_leaf_id,
         'pregrasp_distance': candidate.pregrasp_distance,
@@ -797,6 +732,8 @@ def _candidate_from_record(record):
         edge_margin=record['edge_margin'],
         local_leaf_width=record['local_leaf_width'],
         clearance=record['clearance'],
+        gripper_position=record.get(
+            'gripper_position', OPEN_GRIPPER_POSITION),
         longitudinal_ratio=record['longitudinal_ratio'],
         collision_leaf_id=record['collision_leaf_id'],
         pregrasp_distance=record['pregrasp_distance'],
@@ -860,30 +797,43 @@ def fast_check_child(input_path, output_path):
     # settling window.  The parent process already has these connections, but
     # every hard-timeout child starts with a fresh ROS context.
     time.sleep(0.75)
+    verbose = os.environ.get(
+        'LEAF_MTC_FAST_CHECK_VERBOSE', '').lower() in (
+            '1', 'true', 'yes')
     task = make_task(
-        node, candidate, ik_only=True, introspection=False)
+        node, candidate, ik_only=True, introspection=verbose)
     result = task.plan(1)
+    # Order must match the actual MTC topology so the first zero-count stage
+    # is the real failure point, not an unused later ACM stage listed early.
     stage_names = [
         '1. Current robot state',
         '2. Open gripper',
         '4. Collision-free approach',
         IK_STAGE_NAME,
+        '3. Allow selected leaf fingertip contact',
         APPROACH_STAGE_NAME,
-        '8. Close to 1 mm clearance per side',
     ]
-    if not IS_PRO450:
-        stage_names.insert(
-            2, '3. Allow selected leaf fingertip contact')
+    if IS_PRO450:
+        stage_names.extend([
+            '8. Enter selected leaf contact zone',
+            '9. Close around selected leaf',
+        ])
+    else:
+        stage_names.append('8. Close to 1 mm clearance per side')
+    stage_counts = {
+        name: _stage_solution_count(task, name)
+        for name in stage_names
+    }
+    first_zero = next(
+        (name for name, count in stage_counts.items() if int(count) == 0),
+        '',
+    )
     output = {
         'success': bool(result and task.solutions),
-        'stage_counts': {
-            name: _stage_solution_count(task, name)
-            for name in stage_names
-        },
+        'stage_counts': stage_counts,
+        'first_zero_stage': first_zero,
     }
-    if os.environ.get(
-        'LEAF_MTC_FAST_CHECK_VERBOSE', '').lower() in (
-            '1', 'true', 'yes'):
+    if verbose:
         for stage_name in stage_names:
             try:
                 failures = list(task[stage_name].failures)
@@ -933,7 +883,7 @@ def make_task(node, candidate, ik_only=False, introspection=True):
 
     open_gripper = stages.MoveTo('2. Open gripper', joint_planner)
     open_gripper.group = gripper_group
-    open_gripper.setGoal(gripper_goal(OPEN_GRIPPER_POSITION))
+    open_gripper.setGoal(gripper_goal(candidate.gripper_position))
     task.add(open_gripper)
 
     leaf_name, selected_leaf_collisions, association_distance = (
@@ -956,16 +906,18 @@ def make_task(node, candidate, ik_only=False, introspection=True):
     allow_contact = stages.ModifyPlanningScene(
         '3. Allow selected leaf fingertip contact')
     for collision_id in selected_leaf_collisions:
-        allow_contact.allowCollisions(
-            collision_id,
-            fingertip_links,
-            True,
-        )
-    if not IS_PRO450:
-        task.add(allow_contact)
-
+        # Use explicit string/string pairs.  The Humble Python binding accepts
+        # generic objects for the vector overload, but a Python list can be
+        # retained as an opaque object and make the stage silently reject its
+        # input instead of editing the ACM.
+        for fingertip_link in fingertip_links:
+            allow_contact.allowCollisions(
+                collision_id,
+                fingertip_link,
+                True,
+            )
     planner = core.PipelinePlanner(node)
-    planner.planner = 'RRTConnect'
+    planner.planner = PLANNER_ID
     planner.max_velocity_scaling_factor = 0.2
     planner.max_acceleration_scaling_factor = 0.2
     connect = stages.Connect(
@@ -976,14 +928,15 @@ def make_task(node, candidate, ik_only=False, introspection=True):
     task.add(connect)
 
     generator = stages.GeneratePose('5. Selected perceived leaf target')
-    if IS_PRO450:
-        # The parent temporarily applies the exact leaf-segment/fingertip ACM
-        # pairs, so the generated target can use the stable CurrentState scene.
-        generator.setMonitoredStage(task['1. Current robot state'])
-    else:
-        # Preserve the established TM5/RG2 scene flow unchanged.
-        generator.setMonitoredStage(
-            task['3. Allow selected leaf fingertip contact'])
+    # Monitoring the preceding ModifyPlanningScene stage creates a dependency
+    # cycle: that stage waits for Connect, while Connect waits for the
+    # generator's backward target.  Generate from CurrentState instead.  The
+    # selected-leaf ACM diff still propagates forward through Connect and the
+    # Cartesian contact stages.
+    # Inherit the complete opened F100 state, including mimic joints.  Monitoring
+    # CurrentState here leaves the backward IK state with a closed gripper, which
+    # prevents Connect from merging it with the forward opened-gripper state.
+    generator.setMonitoredStage(task['2. Open gripper'])
     generator.pose = target
 
     compute_ik = stages.ComputeIK(IK_STAGE_NAME, generator)
@@ -1001,13 +954,19 @@ def make_task(node, candidate, ik_only=False, introspection=True):
     )
     task.add(compute_ik)
 
+    # Apply the selected-leaf ACM before any Cartesian leaf approach.  With
+    # thick F100 fingers and leaf proxies, the pre-grasp stroke otherwise
+    # dies mid-way against the very leaf being grasped, which was the
+    # dominant fast-check failure mode.
+    task.add(allow_contact)
+
     cartesian = core.CartesianPath()
     cartesian.max_velocity_scaling_factor = 0.12
     cartesian.max_acceleration_scaling_factor = 0.12
     # Humble requires at least ten interpolated states before its joint-jump
     # check is meaningful.  The compact Pro450 approach needs a denser step
     # than the legacy TM5/RG2 trajectory.
-    cartesian.step_size = 0.0015 if IS_PRO450 else 0.003
+    cartesian.step_size = 0.0005 if IS_PRO450 else 0.003
     approach = stages.MoveRelative(
         APPROACH_STAGE_NAME,
         cartesian,
@@ -1018,22 +977,57 @@ def make_task(node, candidate, ik_only=False, introspection=True):
         header=Header(frame_id=IK_LINK),
         pose=Pose(orientation=Quaternion(w=1.0)),
     )
+    strict_approach_distance = (
+        candidate.pregrasp_distance - CONTACT_ENTRY_DISTANCE
+    )
     approach.setDirection(Vector3Stamped(
         header=Header(frame_id=IK_LINK),
         vector=Vector3(
-            x=APPROACH_AXIS[0] * candidate.pregrasp_distance,
-            y=APPROACH_AXIS[1] * candidate.pregrasp_distance,
-            z=APPROACH_AXIS[2] * candidate.pregrasp_distance,
+            x=APPROACH_AXIS[0] * strict_approach_distance,
+            y=APPROACH_AXIS[1] * strict_approach_distance,
+            z=APPROACH_AXIS[2] * strict_approach_distance,
         ),
     ))
     task.add(approach)
 
+    if IS_PRO450:
+        contact_cartesian = core.CartesianPath()
+        contact_cartesian.max_velocity_scaling_factor = 0.08
+        contact_cartesian.max_acceleration_scaling_factor = 0.08
+        contact_cartesian.step_size = 0.0005
+        contact_entry = stages.MoveRelative(
+            '8. Enter selected leaf contact zone',
+            contact_cartesian,
+        )
+        contact_entry.group = arm_group
+        contact_entry.timeout = 0.5
+        contact_entry.ik_frame = PoseStamped(
+            header=Header(frame_id=IK_LINK),
+            pose=Pose(orientation=Quaternion(w=1.0)),
+        )
+        contact_entry.setDirection(Vector3Stamped(
+            header=Header(frame_id=IK_LINK),
+            vector=Vector3(
+                x=APPROACH_AXIS[0] * CONTACT_ENTRY_DISTANCE,
+                y=APPROACH_AXIS[1] * CONTACT_ENTRY_DISTANCE,
+                z=APPROACH_AXIS[2] * CONTACT_ENTRY_DISTANCE,
+            ),
+        ))
+        task.add(contact_entry)
+
     close_gripper = stages.MoveTo(
-        '8. Close to 1 mm clearance per side',
+        ('9. Close around selected leaf'
+         if IS_PRO450 else '8. Close to 1 mm clearance per side'),
         joint_planner,
     )
     close_gripper.group = gripper_group
-    close_gripper.setGoal(gripper_goal(CLOSED_GRIPPER_POSITION))
+    # Fully collapsing to 0 rad drives the thick leaf proxies through the
+    # finger meshes even with ACM exemptions and rejects otherwise valid
+    # landings.  Close only until the fingertip pivots leave a thin leaf
+    # clearance; the pinch is still unambiguous for ranking and execution.
+    close_position = (
+        0.04 if IS_PRO450 else CLOSED_GRIPPER_POSITION)
+    close_gripper.setGoal(gripper_goal(close_position))
     task.add(close_gripper)
 
     # The bounded candidate check must include closure.  A pose that reaches
@@ -1042,21 +1036,64 @@ def make_task(node, candidate, ik_only=False, introspection=True):
     if ik_only:
         return task
 
-    release_gripper = stages.MoveTo('9. Re-open gripper', joint_planner)
+    release_gripper = stages.MoveTo(
+        '10. Re-open gripper' if IS_PRO450 else '9. Re-open gripper',
+        joint_planner,
+    )
     release_gripper.group = gripper_group
-    release_gripper.setGoal(gripper_goal(OPEN_GRIPPER_POSITION))
+    # Re-open only to the approach aperture while still inside the foliage;
+    # expanding to a wider free-space opening here could hit a neighbouring
+    # leaf even when the inward approach was valid.
+    release_gripper.setGoal(gripper_goal(candidate.gripper_position))
     task.add(release_gripper)
 
+    if IS_PRO450:
+        retreat_cartesian = core.CartesianPath()
+        retreat_cartesian.max_velocity_scaling_factor = 0.12
+        retreat_cartesian.max_acceleration_scaling_factor = 0.12
+        retreat_cartesian.step_size = 0.0015
+        retreat = stages.MoveRelative(
+            '11. Retreat from leaf after release',
+            retreat_cartesian,
+        )
+        retreat.group = arm_group
+        retreat.timeout = 0.5
+        retreat.ik_frame = PoseStamped(
+            header=Header(frame_id=IK_LINK),
+            pose=Pose(orientation=Quaternion(w=1.0)),
+        )
+        retreat.setDirection(Vector3Stamped(
+            header=Header(frame_id=IK_LINK),
+            vector=Vector3(
+                x=-APPROACH_AXIS[0] * candidate.pregrasp_distance,
+                y=-APPROACH_AXIS[1] * candidate.pregrasp_distance,
+                z=-APPROACH_AXIS[2] * candidate.pregrasp_distance,
+            ),
+        ))
+        task.add(retreat)
+
+        forbid_contact = stages.ModifyPlanningScene(
+            '12. Restore selected leaf collision checking')
+        for collision_id in selected_leaf_collisions:
+            for fingertip_link in fingertip_links:
+                forbid_contact.allowCollisions(
+                    collision_id,
+                    fingertip_link,
+                    False,
+                )
+        task.add(forbid_contact)
+
     return_planner = core.PipelinePlanner(node)
-    return_planner.planner = 'RRTConnect'
+    return_planner.planner = PLANNER_ID
     return_planner.max_velocity_scaling_factor = 0.2
     return_planner.max_acceleration_scaling_factor = 0.2
     return_home = stages.MoveTo(
-        '10. Return arm to vertical home',
+        ('13. Return arm to vertical home'
+         if IS_PRO450 else '10. Return arm to vertical home'),
         return_planner,
     )
     return_home.group = arm_group
-    return_home.timeout = 1.0
+    return_home.timeout = 3.0
     return_home.setGoal(arm_home_goal())
     task.add(return_home)
 
@@ -1064,11 +1101,12 @@ def make_task(node, candidate, ik_only=False, introspection=True):
         forbid_contact = stages.ModifyPlanningScene(
             '11. Restore selected leaf collision checking')
         for collision_id in selected_leaf_collisions:
-            forbid_contact.allowCollisions(
-                collision_id,
-                fingertip_links,
-                False,
-            )
+            for fingertip_link in fingertip_links:
+                forbid_contact.allowCollisions(
+                    collision_id,
+                    fingertip_link,
+                    False,
+                )
         task.add(forbid_contact)
     return task
 
@@ -1130,7 +1168,7 @@ def plan_with_stage_progress(
         reporter.join(timeout=0.25)
 
 
-def select_feasible_candidate(candidates, ik_prechecker):
+def select_feasible_candidates(candidates, ik_prechecker):
     """Shortlist by perception, then run bounded IK/collision/line checks."""
     if not candidates:
         return None
@@ -1175,76 +1213,100 @@ def select_feasible_candidate(candidates, ik_prechecker):
     best_perception = candidates[0].perception_score
     total_checks = min(len(candidates), maximum_checks)
     selection_start = time.monotonic()
-    for check_index, candidate in enumerate(
+    aperture_attempt_count = 0
+    for check_index, base_candidate in enumerate(
         candidates[:maximum_checks], start=1
     ):
         checked_count = check_index
         percentage = 100.0 * check_index / max(total_checks, 1)
-        print(
-            '[leaf_mtc_pinch_demo] '
-            f'[{check_index}/{total_checks}] 正在解算 '
-            f'({percentage:.1f}%): '
-            f'leaf={candidate.leaf_id}, point={candidate.point_rank + 1}, '
-            f'tilt={candidate.tilt_degrees:+.0f} deg, '
-            f'roll={candidate.roll_degrees:+.0f} deg, '
-            f'perception={candidate.perception_score:.3f}',
-            flush=True,
-        )
-        ik_valid, _ = ik_prechecker.check(candidate)
-        if not ik_valid:
-            continue
-        result, check_status = _run_fast_check_subprocess(
-            candidate, fast_timeout)
-        if check_status == 'timeout':
-            timeout_count += 1
-            continue
-        if check_status == 'child_error':
-            child_error_count += 1
-            continue
-        if result and result.get('success'):
-            raw_cost = float(result.get('cost', 0.0))
-            candidate.planning_cost = max(0.0, raw_cost)
-            planning_factor = 1.0 / (1.0 + 0.05 * candidate.planning_cost)
-            orientation_factor = math.exp(
-                -abs(candidate.tilt_degrees) / 60.0)
-            candidate.global_score = (
-                candidate.perception_score
-                * orientation_factor
-                * planning_factor
+        aperture_positions = approach_gripper_positions(base_candidate)
+        candidate_succeeded = False
+        for aperture_index, gripper_position in enumerate(
+            aperture_positions, start=1
+        ):
+            aperture_attempt_count += 1
+            candidate = replace(
+                base_candidate,
+                gripper_position=gripper_position,
             )
-            feasible.append(candidate)
-            feasible_points = {
-                (item.leaf_id, item.point_rank)
-                for item in feasible
-            }
-            # Preserve some planning diversity without spending the remainder
-            # of the 80-check budget after several independent landing points
-            # are already fully feasible.
-            if len(feasible) >= 4 and len(feasible_points) >= 2:
+            pivot_span_mm = 1000.0 * f100_fingertip_pivot_span(
+                gripper_position)
+            print(
+                '[leaf_mtc_pinch_demo] '
+                f'[{check_index}/{total_checks}] 正在解算 '
+                f'({percentage:.1f}%): '
+                f'leaf={candidate.leaf_id}, '
+                f'point={candidate.point_rank + 1}, '
+                f'tilt={candidate.tilt_degrees:+.0f} deg, '
+                f'roll={candidate.roll_degrees:+.0f} deg, '
+                f'gripper_q={gripper_position:.2f} '
+                f'(pivot_span={pivot_span_mm:.1f} mm, '
+                f'aperture_try={aperture_index}/{len(aperture_positions)}), '
+                f'perception={candidate.perception_score:.3f}',
+                flush=True,
+            )
+            ik_valid, _ = ik_prechecker.check(candidate)
+            if not ik_valid:
+                continue
+            result, check_status = _run_fast_check_subprocess(
+                candidate, fast_timeout)
+            if check_status == 'timeout':
+                timeout_count += 1
+                continue
+            if check_status == 'child_error':
+                child_error_count += 1
+                continue
+            if result and result.get('success'):
+                raw_cost = float(result.get('cost', 0.0))
+                candidate.planning_cost = max(0.0, raw_cost)
+                planning_factor = (
+                    1.0 / (1.0 + 0.05 * candidate.planning_cost)
+                )
+                orientation_factor = math.exp(
+                    -abs(candidate.tilt_degrees) / 60.0)
+                candidate.global_score = (
+                    candidate.perception_score
+                    * orientation_factor
+                    * planning_factor
+                )
+                feasible.append(candidate)
+                candidate_succeeded = True
                 break
-            # A very strong top-ranked point may stop slightly earlier once
-            # two of its orientations have succeeded.
-            if all((
-                candidate.perception_score >= best_perception - 1e-6,
-                candidate.planning_cost <= 2.0,
-                len(feasible) >= 2,
-            )):
-                break
-        else:
-            mtc_reject_count += 1
-            stage_counts = (result or {}).get('stage_counts', {})
-            for stage_name, solution_count in stage_counts.items():
-                if int(solution_count) == 0:
-                    mtc_failure_stages[stage_name] += 1
-                    break
+            else:
+                mtc_reject_count += 1
+                first_zero = (result or {}).get('first_zero_stage', '')
+                if first_zero:
+                    mtc_failure_stages[first_zero] += 1
+                else:
+                    stage_counts = (result or {}).get('stage_counts', {})
+                    for stage_name, solution_count in stage_counts.items():
+                        if int(solution_count) == 0:
+                            mtc_failure_stages[stage_name] += 1
+                            break
+        if not candidate_succeeded:
+            continue
+        feasible_points = {
+            (item.leaf_id, item.point_rank)
+            for item in feasible
+        }
+        # Need at least three independent complete landings before early stop
+        # so a later full-task pass can still publish >=3 ranked solutions.
+        if len(feasible) >= 6 and len(feasible_points) >= 3:
+            break
+        if all((
+            candidate.perception_score >= best_perception - 1e-6,
+            candidate.planning_cost <= 2.0,
+            len(feasible) >= 3,
+        )):
+            break
     total_elapsed = time.monotonic() - selection_start
     print(
         '[leaf_mtc_pinch_demo] 快速解算结束: '
         f'已检查={checked_count}/{total_checks}, '
+        f'开度尝试={aperture_attempt_count}, '
         f'可达={len(feasible)}, '
         f'裸IK成功={ik_prechecker.counts["bare_success"]}, '
         f'碰撞IK成功={ik_prechecker.counts["collision_success"]}, '
-        f'碰撞检查转交MTC={ik_prechecker.counts["collision_deferred"]}, '
         f'MTC拒绝={mtc_reject_count}, '
         f'子进程错误={child_error_count}, '
         f'超时={timeout_count}, '
@@ -1261,7 +1323,7 @@ def select_feasible_candidate(candidates, ik_prechecker):
             item.point_rank,
             item.rotation_rank,
         ))
-    return feasible[0]
+    return feasible
 
 
 def main():
@@ -1309,90 +1371,114 @@ def main():
     signal.signal(signal.SIGINT, request_stop)
     signal.signal(signal.SIGTERM, request_stop)
     task = None
-    acm_enabled = False
+    planned_tasks = []
     try:
-        if IS_PRO450:
-            acm_enabled = ik_prechecker.set_leaf_fingertip_collisions(True)
-            if not acm_enabled:
-                print(
-                    '[leaf_mtc_pinch_demo] 无法应用叶片与指尖的临时碰撞'
-                    '矩阵，已取消规划且未放宽其他碰撞。',
-                    flush=True,
-                )
-                return
-        selected = select_feasible_candidate(
+        feasible = select_feasible_candidates(
             candidates, ik_prechecker)
-        if selected is None:
+        if not feasible:
             print(
                 '[leaf_mtc_pinch_demo] 所有短名单候选均未通过 '
                 'IK、碰撞和直线预抓取检查。',
                 flush=True,
             )
             return
-        target = selected.target
-        print(
-            '[leaf_mtc_pinch_demo] 全局最优候选: '
-            f'leaf={selected.leaf_id}, point={selected.point_rank + 1}, '
-            f'tilt={selected.tilt_degrees:+.0f} deg, '
-            f'roll={selected.roll_degrees:+.0f} deg, '
-            f'perception={selected.perception_score:.3f}, '
-            f'global={selected.global_score:.3f}, '
-            f'frame={target.header.frame_id}, '
-            f'xyz=({target.pose.position.x:.4f}, '
-            f'{target.pose.position.y:.4f}, {target.pose.position.z:.4f})',
-            flush=True,
-        )
-        task = make_task(node, selected, ik_only=ik_only)
+        desired_complete_solutions = int(os.environ.get(
+            'LEAF_MTC_DESIRED_COMPLETE_SOLUTIONS',
+            '3' if IS_PRO450 and not ik_only else '1',
+        ))
+        maximum_full_candidates = int(os.environ.get(
+            'LEAF_MTC_MAX_FULL_CANDIDATES',
+            '6' if IS_PRO450 else '3',
+        ))
         max_solutions = 12 if ik_only else 5
         full_timeout = float(os.environ.get(
             'LEAF_MTC_FULL_TIMEOUT_SECONDS', '20.0'))
-        result, timed_out = plan_with_stage_progress(
-            task,
-            max_solutions,
-            '完整任务规划',
-            full_timeout,
-        )
-        if not result and not timed_out:
+        ranked_solutions = []
+        for candidate_rank, selected in enumerate(
+            feasible[:maximum_full_candidates], start=1
+        ):
+            target = selected.target
             print(
-                '[leaf_mtc_pinch_demo] First planning attempt returned no '
-                'solution; retrying once after ROS discovery settles.',
+                '[leaf_mtc_pinch_demo] 完整任务候选 '
+                f'{candidate_rank}/{min(len(feasible), maximum_full_candidates)}: '
+                f'leaf={selected.leaf_id}, '
+                f'point={selected.point_rank + 1}, '
+                f'tilt={selected.tilt_degrees:+.0f} deg, '
+                f'roll={selected.roll_degrees:+.0f} deg, '
+                f'perception={selected.perception_score:.3f}, '
+                f'global={selected.global_score:.3f}, '
+                f'frame={target.header.frame_id}, '
+                f'xyz=({target.pose.position.x:.4f}, '
+                f'{target.pose.position.y:.4f}, '
+                f'{target.pose.position.z:.4f})',
                 flush=True,
             )
-            time.sleep(1.0)
+            task = make_task(node, selected, ik_only=ik_only)
+            task.name = (
+                f'Pro450 leaf pinch L{selected.leaf_id} '
+                f'P{selected.point_rank + 1} '
+                f'R{selected.rotation_rank + 1}')
             result, timed_out = plan_with_stage_progress(
                 task,
                 max_solutions,
-                '完整任务重试',
+                f'完整任务规划 候选 {candidate_rank}',
                 full_timeout,
             )
-        if not result:
+            if not result and not timed_out:
+                print(
+                    '[leaf_mtc_pinch_demo] 当前候选首次规划无解；'
+                    '等待 ROS 发现稳定后重试一次。',
+                    flush=True,
+                )
+                time.sleep(1.0)
+                result, timed_out = plan_with_stage_progress(
+                    task,
+                    max_solutions,
+                    f'完整任务重试 候选 {candidate_rank}',
+                    full_timeout,
+                )
+            if result and task.solutions:
+                planned_tasks.append(task)
+                ranked_solutions.extend(
+                    (float(getattr(solution, 'cost', float('inf'))),
+                     task, solution, selected)
+                    for solution in task.solutions
+                )
+            else:
+                task.reset()
+                task.enableIntrospection(False)
+            task = None
+            if len(ranked_solutions) >= desired_complete_solutions:
+                break
+
+        if not ranked_solutions:
             print(
                 '[leaf_mtc_pinch_demo] No complete solution was found. '
                 'Failure details remain in the terminal; RViz was cleared.',
                 flush=True,
             )
-            task.reset()
-            task.enableIntrospection(False)
             return
         else:
-            solutions = list(task.solutions)
-            solutions.sort(
-                key=lambda solution: float(
-                    getattr(solution, 'cost', float('inf'))))
+            ranked_solutions.sort(key=lambda item: item[0])
             print(
-                f'[leaf_mtc_pinch_demo] Generated {len(solutions)} ranked '
+                f'[leaf_mtc_pinch_demo] Generated '
+                f'{len(ranked_solutions)} ranked '
                 'complete solution(s); publishing all to RViz in ascending '
                 'MTC cost order.',
                 flush=True,
             )
-            for rank, solution in enumerate(solutions, start=1):
+            for rank, (
+                cost, solution_task, solution, solution_candidate
+            ) in enumerate(ranked_solutions, start=1):
                 print(
                     '[leaf_mtc_pinch_demo] 发布完整解 '
-                    f'{rank}/{len(solutions)}: '
-                    f'cost={float(getattr(solution, "cost", 0.0)):.3f}',
+                    f'{rank}/{len(ranked_solutions)}: '
+                    f'leaf={solution_candidate.leaf_id}, '
+                    f'point={solution_candidate.point_rank + 1}, '
+                    f'cost={cost:.3f}',
                     flush=True,
                 )
-                task.publish(solution)
+                solution_task.publish(solution)
 
             if execute_solution:
                 if ik_only:
@@ -1407,7 +1493,9 @@ def main():
                     '(预抓取、夹取、松开、回零)。',
                     flush=True,
                 )
-                execution_result = task.execute(solutions[0])
+                _, execution_task, execution_solution, _ = (
+                    ranked_solutions[0])
+                execution_result = execution_task.execute(execution_solution)
                 execution_code = getattr(execution_result, 'val', None)
                 if execution_code != MoveItErrorCodes.SUCCESS:
                     print(
@@ -1432,15 +1520,9 @@ def main():
         # Ignore repeated signals while plugin-owned objects are torn down.
         signal.signal(signal.SIGINT, signal.SIG_IGN)
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
-        if acm_enabled and not ik_prechecker.set_leaf_fingertip_collisions(
-            False
-        ):
-            print(
-                '[leaf_mtc_pinch_demo] 警告: 临时叶片指尖碰撞矩阵恢复失败。',
-                flush=True,
-            )
         # Destroy MTC objects before shutting down plugin loaders.
         del task
+        planned_tasks.clear()
         ik_prechecker.close()
         if rclpy.ok():
             rclpy.shutdown()

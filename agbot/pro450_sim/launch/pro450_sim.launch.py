@@ -153,9 +153,10 @@ def generate_launch_description():
         DeclareLaunchArgument('spawn_robot', default_value='true'),
         DeclareLaunchArgument(
             'control',
-            default_value='false',
+            default_value='true',
             description=(
-                'Enable gz_ros2_control for real multi-view arm motion')),
+                'Enable gz_ros2_control for real multi-view arm motion; '
+                'set false only for static visual inspection')),
         gz_gui,
         gz_server,
         sensor_bridge,

@@ -1,0 +1,83 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz_default_plugins/Grid
+      Enabled: true
+      Name: Grid
+      Cell Size: 1
+      Plane Cell Count: 24
+    - Class: rviz_default_plugins/TF
+      Enabled: false
+      Name: TF
+      Marker Scale: 0.3
+    - Alpha: 1
+      Class: rviz_default_plugins/RobotModel
+      Description Topic:
+        Value: /robot_description
+      Enabled: true
+      Name: RobotModel
+      Visual Enabled: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Atrium Walls
+      Topic:
+        Value: /atrium_wall_markers
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Atrium Plants
+      Topic:
+        Value: /atrium_plant_markers
+    - Class: rviz_default_plugins/Map
+      Enabled: true
+      Name: Map
+      Topic:
+        Value: /map
+      Alpha: 0.7
+    - Class: rviz_default_plugins/PointCloud2
+      Enabled: true
+      Name: Depth Cloud (optical)
+      Topic:
+        Value: /camera/depth/color/points
+      Size (m): 0.03
+      Style: Flat Squares
+    - Class: rviz_default_plugins/LaserScan
+      Enabled: true
+      Name: Scan
+      Topic:
+        Value: /scan
+      Size (m): 0.05
+      Style: Flat Squares
+    - Class: rviz_default_plugins/Image
+      Enabled: true
+      Name: Camera RGB
+      Topic:
+        Value: /camera/color/image_raw
+  Global Options:
+    Fixed Frame: map
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
+  Value: true
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 18
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Name: Current View
+      Pitch: 0.85
+      Yaw: 0.8
+Window Geometry:
+  Height: 960
+  Width: 1500

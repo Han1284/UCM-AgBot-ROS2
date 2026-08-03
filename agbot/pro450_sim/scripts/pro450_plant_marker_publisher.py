@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 """Publish the Pro450-scaled plant visual for RViz."""
 
+import os
+
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
-from visualization_msgs.msg import Marker
+from shape_msgs.msg import SolidPrimitive
+from visualization_msgs.msg import Marker, MarkerArray
+
+from leaf_manipulation_sim.plant_collision_geometry import (
+    plant_collision_objects,
+)
 
 
 class Pro450PlantMarkerPublisher(Node):
@@ -13,6 +20,8 @@ class Pro450PlantMarkerPublisher(Node):
         qos = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL,
                          reliability=ReliabilityPolicy.RELIABLE)
         self.publisher = self.create_publisher(Marker, '/plant_marker', qos)
+        self.collision_publisher = self.create_publisher(
+            MarkerArray, '/plant_collision_markers', qos)
         self.timer = self.create_timer(0.5, self.publish_marker)
 
     def publish_marker(self):
@@ -38,7 +47,60 @@ class Pro450PlantMarkerPublisher(Node):
         marker.mesh_use_embedded_materials = True
         marker.frame_locked = True
         self.publisher.publish(marker)
+        self.publish_collision_markers()
         self.timer.cancel()
+
+    def publish_collision_markers(self):
+        # Use exactly the same world, frame and half-scale as the Pro450 leaf
+        # pipeline.  These environment variables are local to this publisher.
+        os.environ['LEAF_PLANT_WORLD_PACKAGE'] = 'pro450_sim'
+        os.environ['LEAF_PLANT_WORLD_RELATIVE_PATH'] = (
+            'worlds/pro450_leaf_bench.world')
+        os.environ['LEAF_PLANT_FRAME'] = 'base_root'
+        os.environ['LEAF_PLANT_PROXY_SCALE'] = '0.5'
+
+        message = MarkerArray()
+        stamp = self.get_clock().now().to_msg()
+        for marker_id, collision_object in enumerate(
+                plant_collision_objects()):
+            primitive = collision_object.primitives[0]
+            collision_marker = Marker()
+            collision_marker.header.frame_id = collision_object.header.frame_id
+            collision_marker.header.stamp = stamp
+            collision_marker.ns = 'plant_collision_proxies'
+            collision_marker.id = marker_id
+            collision_marker.action = Marker.ADD
+            collision_marker.pose = collision_object.primitive_poses[0]
+            collision_marker.frame_locked = True
+
+            if primitive.type == SolidPrimitive.BOX:
+                collision_marker.type = Marker.CUBE
+                collision_marker.scale.x = primitive.dimensions[
+                    SolidPrimitive.BOX_X]
+                collision_marker.scale.y = primitive.dimensions[
+                    SolidPrimitive.BOX_Y]
+                collision_marker.scale.z = primitive.dimensions[
+                    SolidPrimitive.BOX_Z]
+                collision_marker.color.r = 0.1
+                collision_marker.color.g = 0.8
+                collision_marker.color.b = 1.0
+                collision_marker.color.a = 0.24
+            elif primitive.type == SolidPrimitive.CYLINDER:
+                collision_marker.type = Marker.CYLINDER
+                radius = primitive.dimensions[
+                    SolidPrimitive.CYLINDER_RADIUS]
+                collision_marker.scale.x = 2.0 * radius
+                collision_marker.scale.y = 2.0 * radius
+                collision_marker.scale.z = primitive.dimensions[
+                    SolidPrimitive.CYLINDER_HEIGHT]
+                collision_marker.color.r = 1.0
+                collision_marker.color.g = 0.35
+                collision_marker.color.b = 0.1
+                collision_marker.color.a = 0.16
+            else:
+                continue
+            message.markers.append(collision_marker)
+        self.collision_publisher.publish(message)
 
 
 def main(args=None):

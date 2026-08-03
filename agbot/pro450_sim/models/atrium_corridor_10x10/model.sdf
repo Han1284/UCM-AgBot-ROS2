@@ -1,0 +1,738 @@
+<?xml version="1.0"?>
+<sdf version="1.8">
+  <model name="atrium_corridor_10x10">
+    <static>true</static>
+
+    <link name="floor_n">
+      <pose>0 4.0 -0.04 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="floor_n_col">
+        <geometry><box><size>10.0 2.0 0.08</size></box></geometry>
+      </collision>
+      <visual name="floor_n_vis">
+        <geometry><box><size>10.0 2.0 0.08</size></box></geometry>
+        <material>
+          <ambient>0.58 0.58 0.56 1</ambient>
+          <diffuse>0.58 0.58 0.56 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>file:///home/han1284/projects/ros2_ws/install/pro450_sim/share/pro450_sim/models/atrium_corridor_10x10/materials/textures/concrete.png</albedo_map>
+              <metalness>0.0</metalness>
+              <roughness>0.85</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+    </link>
+    <link name="floor_s">
+      <pose>0 -4.0 -0.04 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="floor_s_col">
+        <geometry><box><size>10.0 2.0 0.08</size></box></geometry>
+      </collision>
+      <visual name="floor_s_vis">
+        <geometry><box><size>10.0 2.0 0.08</size></box></geometry>
+        <material>
+          <ambient>0.58 0.58 0.56 1</ambient>
+          <diffuse>0.58 0.58 0.56 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>file:///home/han1284/projects/ros2_ws/install/pro450_sim/share/pro450_sim/models/atrium_corridor_10x10/materials/textures/concrete.png</albedo_map>
+              <metalness>0.0</metalness>
+              <roughness>0.85</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+    </link>
+    <link name="floor_e">
+      <pose>4.0 0 -0.04 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="floor_e_col">
+        <geometry><box><size>2.0 6.0 0.08</size></box></geometry>
+      </collision>
+      <visual name="floor_e_vis">
+        <geometry><box><size>2.0 6.0 0.08</size></box></geometry>
+        <material>
+          <ambient>0.58 0.58 0.56 1</ambient>
+          <diffuse>0.58 0.58 0.56 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>file:///home/han1284/projects/ros2_ws/install/pro450_sim/share/pro450_sim/models/atrium_corridor_10x10/materials/textures/concrete.png</albedo_map>
+              <metalness>0.0</metalness>
+              <roughness>0.85</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+    </link>
+    <link name="floor_w">
+      <pose>-4.0 0 -0.04 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="floor_w_col">
+        <geometry><box><size>2.0 6.0 0.08</size></box></geometry>
+      </collision>
+      <visual name="floor_w_vis">
+        <geometry><box><size>2.0 6.0 0.08</size></box></geometry>
+        <material>
+          <ambient>0.58 0.58 0.56 1</ambient>
+          <diffuse>0.58 0.58 0.56 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>file:///home/han1284/projects/ros2_ws/install/pro450_sim/share/pro450_sim/models/atrium_corridor_10x10/materials/textures/concrete.png</albedo_map>
+              <metalness>0.0</metalness>
+              <roughness>0.85</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+    </link>
+    <link name="floor_atrium">
+      <pose>0 0 -0.06 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="floor_atrium_col">
+        <geometry><box><size>6.0 6.0 0.08</size></box></geometry>
+      </collision>
+      <visual name="floor_atrium_vis">
+        <geometry><box><size>6.0 6.0 0.08</size></box></geometry>
+        <material>
+          <ambient>0.72 0.72 0.70 1</ambient>
+          <diffuse>0.72 0.72 0.70 1</diffuse>
+          <specular>0.15 0.15 0.15 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="wall_n_l">
+      <pose>-2.8000000000000003 5.0 1.5 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="wall_n_l_col">
+        <geometry><box><size>4.4 0.12 3.0</size></box></geometry>
+      </collision>
+      <visual name="wall_n_l_vis">
+        <geometry><box><size>4.4 0.12 3.0</size></box></geometry>
+        <material>
+          <ambient>0.88 0.88 0.86 1</ambient>
+          <diffuse>0.88 0.88 0.86 1</diffuse>
+          <specular>0.05 0.05 0.05 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="wall_n_r">
+      <pose>2.8000000000000003 5.0 1.5 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="wall_n_r_col">
+        <geometry><box><size>4.4 0.12 3.0</size></box></geometry>
+      </collision>
+      <visual name="wall_n_r_vis">
+        <geometry><box><size>4.4 0.12 3.0</size></box></geometry>
+        <material>
+          <ambient>0.88 0.88 0.86 1</ambient>
+          <diffuse>0.88 0.88 0.86 1</diffuse>
+          <specular>0.05 0.05 0.05 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="wall_n_lintel">
+      <pose>0 5.0 2.6 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="wall_n_lintel_col">
+        <geometry><box><size>1.2 0.12 0.7999999999999998</size></box></geometry>
+      </collision>
+      <visual name="wall_n_lintel_vis">
+        <geometry><box><size>1.2 0.12 0.7999999999999998</size></box></geometry>
+        <material>
+          <ambient>0.88 0.88 0.86 1</ambient>
+          <diffuse>0.88 0.88 0.86 1</diffuse>
+          <specular>0.05 0.05 0.05 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="door_n_jamb_l">
+      <pose>-0.6 5.0 1.1 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="door_n_jamb_l_col">
+        <geometry><box><size>0.08 0.16 2.2</size></box></geometry>
+      </collision>
+      <visual name="door_n_jamb_l_vis">
+        <geometry><box><size>0.08 0.16 2.2</size></box></geometry>
+        <material>
+          <ambient>0.32 0.28 0.24 1</ambient>
+          <diffuse>0.32 0.28 0.24 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="door_n_jamb_r">
+      <pose>0.6 5.0 1.1 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="door_n_jamb_r_col">
+        <geometry><box><size>0.08 0.16 2.2</size></box></geometry>
+      </collision>
+      <visual name="door_n_jamb_r_vis">
+        <geometry><box><size>0.08 0.16 2.2</size></box></geometry>
+        <material>
+          <ambient>0.32 0.28 0.24 1</ambient>
+          <diffuse>0.32 0.28 0.24 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="door_n_head">
+      <pose>0 5.0 2.2 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="door_n_head_col">
+        <geometry><box><size>1.28 0.16 0.08</size></box></geometry>
+      </collision>
+      <visual name="door_n_head_vis">
+        <geometry><box><size>1.28 0.16 0.08</size></box></geometry>
+        <material>
+          <ambient>0.32 0.28 0.24 1</ambient>
+          <diffuse>0.32 0.28 0.24 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="door_n_leaf">
+      <pose>0 5.0 1.09 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="door_n_leaf_col">
+        <geometry><box><size>1.16 0.045 2.18</size></box></geometry>
+      </collision>
+      <visual name="door_n_leaf_vis">
+        <geometry><box><size>1.16 0.045 2.18</size></box></geometry>
+        <material>
+          <ambient>0.48 0.34 0.22 1</ambient>
+          <diffuse>0.48 0.34 0.22 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>file:///home/han1284/projects/ros2_ws/install/pro450_sim/share/pro450_sim/models/atrium_corridor_10x10/materials/textures/wood_cherry.png</albedo_map>
+              <metalness>0.0</metalness>
+              <roughness>0.85</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+    </link>
+    <link name="door_n_handle">
+      <pose>0.40599999999999997 4.96 1.0 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="door_n_handle_col">
+        <geometry><box><size>0.02 0.06 0.12</size></box></geometry>
+      </collision>
+      <visual name="door_n_handle_vis">
+        <geometry><box><size>0.02 0.06 0.12</size></box></geometry>
+        <material>
+          <ambient>0.75 0.72 0.68 1</ambient>
+          <diffuse>0.75 0.72 0.68 1</diffuse>
+          <specular>0.4 0.4 0.4 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="wall_s_l">
+      <pose>-2.8000000000000003 -5.0 1.5 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="wall_s_l_col">
+        <geometry><box><size>4.4 0.12 3.0</size></box></geometry>
+      </collision>
+      <visual name="wall_s_l_vis">
+        <geometry><box><size>4.4 0.12 3.0</size></box></geometry>
+        <material>
+          <ambient>0.88 0.88 0.86 1</ambient>
+          <diffuse>0.88 0.88 0.86 1</diffuse>
+          <specular>0.05 0.05 0.05 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="wall_s_r">
+      <pose>2.8000000000000003 -5.0 1.5 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="wall_s_r_col">
+        <geometry><box><size>4.4 0.12 3.0</size></box></geometry>
+      </collision>
+      <visual name="wall_s_r_vis">
+        <geometry><box><size>4.4 0.12 3.0</size></box></geometry>
+        <material>
+          <ambient>0.88 0.88 0.86 1</ambient>
+          <diffuse>0.88 0.88 0.86 1</diffuse>
+          <specular>0.05 0.05 0.05 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="wall_s_lintel">
+      <pose>0 -5.0 2.6 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="wall_s_lintel_col">
+        <geometry><box><size>1.2 0.12 0.7999999999999998</size></box></geometry>
+      </collision>
+      <visual name="wall_s_lintel_vis">
+        <geometry><box><size>1.2 0.12 0.7999999999999998</size></box></geometry>
+        <material>
+          <ambient>0.88 0.88 0.86 1</ambient>
+          <diffuse>0.88 0.88 0.86 1</diffuse>
+          <specular>0.05 0.05 0.05 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="door_s_jamb_l">
+      <pose>-0.6 -5.0 1.1 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="door_s_jamb_l_col">
+        <geometry><box><size>0.08 0.16 2.2</size></box></geometry>
+      </collision>
+      <visual name="door_s_jamb_l_vis">
+        <geometry><box><size>0.08 0.16 2.2</size></box></geometry>
+        <material>
+          <ambient>0.32 0.28 0.24 1</ambient>
+          <diffuse>0.32 0.28 0.24 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="door_s_jamb_r">
+      <pose>0.6 -5.0 1.1 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="door_s_jamb_r_col">
+        <geometry><box><size>0.08 0.16 2.2</size></box></geometry>
+      </collision>
+      <visual name="door_s_jamb_r_vis">
+        <geometry><box><size>0.08 0.16 2.2</size></box></geometry>
+        <material>
+          <ambient>0.32 0.28 0.24 1</ambient>
+          <diffuse>0.32 0.28 0.24 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="door_s_head">
+      <pose>0 -5.0 2.2 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="door_s_head_col">
+        <geometry><box><size>1.28 0.16 0.08</size></box></geometry>
+      </collision>
+      <visual name="door_s_head_vis">
+        <geometry><box><size>1.28 0.16 0.08</size></box></geometry>
+        <material>
+          <ambient>0.32 0.28 0.24 1</ambient>
+          <diffuse>0.32 0.28 0.24 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="door_s_leaf">
+      <pose>0 -5.0 1.09 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="door_s_leaf_col">
+        <geometry><box><size>1.16 0.045 2.18</size></box></geometry>
+      </collision>
+      <visual name="door_s_leaf_vis">
+        <geometry><box><size>1.16 0.045 2.18</size></box></geometry>
+        <material>
+          <ambient>0.48 0.34 0.22 1</ambient>
+          <diffuse>0.48 0.34 0.22 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>file:///home/han1284/projects/ros2_ws/install/pro450_sim/share/pro450_sim/models/atrium_corridor_10x10/materials/textures/wood_cherry.png</albedo_map>
+              <metalness>0.0</metalness>
+              <roughness>0.85</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+    </link>
+    <link name="door_s_handle">
+      <pose>0.40599999999999997 -4.96 1.0 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="door_s_handle_col">
+        <geometry><box><size>0.02 0.06 0.12</size></box></geometry>
+      </collision>
+      <visual name="door_s_handle_vis">
+        <geometry><box><size>0.02 0.06 0.12</size></box></geometry>
+        <material>
+          <ambient>0.75 0.72 0.68 1</ambient>
+          <diffuse>0.75 0.72 0.68 1</diffuse>
+          <specular>0.4 0.4 0.4 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="wall_e_a">
+      <pose>5.0 2.7700000000000005 1.5 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="wall_e_a_col">
+        <geometry><box><size>0.12 4.340000000000001 3.0</size></box></geometry>
+      </collision>
+      <visual name="wall_e_a_vis">
+        <geometry><box><size>0.12 4.340000000000001 3.0</size></box></geometry>
+        <material>
+          <ambient>0.88 0.88 0.86 1</ambient>
+          <diffuse>0.88 0.88 0.86 1</diffuse>
+          <specular>0.05 0.05 0.05 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="wall_e_b">
+      <pose>5.0 -2.7700000000000005 1.5 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="wall_e_b_col">
+        <geometry><box><size>0.12 4.340000000000001 3.0</size></box></geometry>
+      </collision>
+      <visual name="wall_e_b_vis">
+        <geometry><box><size>0.12 4.340000000000001 3.0</size></box></geometry>
+        <material>
+          <ambient>0.88 0.88 0.86 1</ambient>
+          <diffuse>0.88 0.88 0.86 1</diffuse>
+          <specular>0.05 0.05 0.05 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="wall_e_lintel">
+      <pose>5.0 0 2.6 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="wall_e_lintel_col">
+        <geometry><box><size>0.12 1.2 0.7999999999999998</size></box></geometry>
+      </collision>
+      <visual name="wall_e_lintel_vis">
+        <geometry><box><size>0.12 1.2 0.7999999999999998</size></box></geometry>
+        <material>
+          <ambient>0.88 0.88 0.86 1</ambient>
+          <diffuse>0.88 0.88 0.86 1</diffuse>
+          <specular>0.05 0.05 0.05 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="door_e_jamb_a">
+      <pose>5.0 0.6 1.1 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="door_e_jamb_a_col">
+        <geometry><box><size>0.16 0.08 2.2</size></box></geometry>
+      </collision>
+      <visual name="door_e_jamb_a_vis">
+        <geometry><box><size>0.16 0.08 2.2</size></box></geometry>
+        <material>
+          <ambient>0.32 0.28 0.24 1</ambient>
+          <diffuse>0.32 0.28 0.24 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="door_e_jamb_b">
+      <pose>5.0 -0.6 1.1 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="door_e_jamb_b_col">
+        <geometry><box><size>0.16 0.08 2.2</size></box></geometry>
+      </collision>
+      <visual name="door_e_jamb_b_vis">
+        <geometry><box><size>0.16 0.08 2.2</size></box></geometry>
+        <material>
+          <ambient>0.32 0.28 0.24 1</ambient>
+          <diffuse>0.32 0.28 0.24 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="door_e_head">
+      <pose>5.0 0 2.2 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="door_e_head_col">
+        <geometry><box><size>0.16 1.28 0.08</size></box></geometry>
+      </collision>
+      <visual name="door_e_head_vis">
+        <geometry><box><size>0.16 1.28 0.08</size></box></geometry>
+        <material>
+          <ambient>0.32 0.28 0.24 1</ambient>
+          <diffuse>0.32 0.28 0.24 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="door_e_leaf">
+      <pose>5.0 0 1.09 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="door_e_leaf_col">
+        <geometry><box><size>0.045 1.16 2.18</size></box></geometry>
+      </collision>
+      <visual name="door_e_leaf_vis">
+        <geometry><box><size>0.045 1.16 2.18</size></box></geometry>
+        <material>
+          <ambient>0.48 0.34 0.22 1</ambient>
+          <diffuse>0.48 0.34 0.22 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>file:///home/han1284/projects/ros2_ws/install/pro450_sim/share/pro450_sim/models/atrium_corridor_10x10/materials/textures/wood_cherry.png</albedo_map>
+              <metalness>0.0</metalness>
+              <roughness>0.85</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+    </link>
+    <link name="door_e_handle">
+      <pose>4.96 0.40599999999999997 1.0 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="door_e_handle_col">
+        <geometry><box><size>0.06 0.02 0.12</size></box></geometry>
+      </collision>
+      <visual name="door_e_handle_vis">
+        <geometry><box><size>0.06 0.02 0.12</size></box></geometry>
+        <material>
+          <ambient>0.75 0.72 0.68 1</ambient>
+          <diffuse>0.75 0.72 0.68 1</diffuse>
+          <specular>0.4 0.4 0.4 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="wall_w_a">
+      <pose>-5.0 2.7700000000000005 1.5 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="wall_w_a_col">
+        <geometry><box><size>0.12 4.340000000000001 3.0</size></box></geometry>
+      </collision>
+      <visual name="wall_w_a_vis">
+        <geometry><box><size>0.12 4.340000000000001 3.0</size></box></geometry>
+        <material>
+          <ambient>0.88 0.88 0.86 1</ambient>
+          <diffuse>0.88 0.88 0.86 1</diffuse>
+          <specular>0.05 0.05 0.05 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="wall_w_b">
+      <pose>-5.0 -2.7700000000000005 1.5 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="wall_w_b_col">
+        <geometry><box><size>0.12 4.340000000000001 3.0</size></box></geometry>
+      </collision>
+      <visual name="wall_w_b_vis">
+        <geometry><box><size>0.12 4.340000000000001 3.0</size></box></geometry>
+        <material>
+          <ambient>0.88 0.88 0.86 1</ambient>
+          <diffuse>0.88 0.88 0.86 1</diffuse>
+          <specular>0.05 0.05 0.05 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="wall_w_lintel">
+      <pose>-5.0 0 2.6 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="wall_w_lintel_col">
+        <geometry><box><size>0.12 1.2 0.7999999999999998</size></box></geometry>
+      </collision>
+      <visual name="wall_w_lintel_vis">
+        <geometry><box><size>0.12 1.2 0.7999999999999998</size></box></geometry>
+        <material>
+          <ambient>0.88 0.88 0.86 1</ambient>
+          <diffuse>0.88 0.88 0.86 1</diffuse>
+          <specular>0.05 0.05 0.05 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="door_w_jamb_a">
+      <pose>-5.0 0.6 1.1 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="door_w_jamb_a_col">
+        <geometry><box><size>0.16 0.08 2.2</size></box></geometry>
+      </collision>
+      <visual name="door_w_jamb_a_vis">
+        <geometry><box><size>0.16 0.08 2.2</size></box></geometry>
+        <material>
+          <ambient>0.32 0.28 0.24 1</ambient>
+          <diffuse>0.32 0.28 0.24 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="door_w_jamb_b">
+      <pose>-5.0 -0.6 1.1 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="door_w_jamb_b_col">
+        <geometry><box><size>0.16 0.08 2.2</size></box></geometry>
+      </collision>
+      <visual name="door_w_jamb_b_vis">
+        <geometry><box><size>0.16 0.08 2.2</size></box></geometry>
+        <material>
+          <ambient>0.32 0.28 0.24 1</ambient>
+          <diffuse>0.32 0.28 0.24 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="door_w_head">
+      <pose>-5.0 0 2.2 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="door_w_head_col">
+        <geometry><box><size>0.16 1.28 0.08</size></box></geometry>
+      </collision>
+      <visual name="door_w_head_vis">
+        <geometry><box><size>0.16 1.28 0.08</size></box></geometry>
+        <material>
+          <ambient>0.32 0.28 0.24 1</ambient>
+          <diffuse>0.32 0.28 0.24 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="door_w_leaf">
+      <pose>-5.0 0 1.09 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="door_w_leaf_col">
+        <geometry><box><size>0.045 1.16 2.18</size></box></geometry>
+      </collision>
+      <visual name="door_w_leaf_vis">
+        <geometry><box><size>0.045 1.16 2.18</size></box></geometry>
+        <material>
+          <ambient>0.48 0.34 0.22 1</ambient>
+          <diffuse>0.48 0.34 0.22 1</diffuse>
+          <specular>0.12 0.12 0.12 1</specular>
+          <pbr>
+            <metal>
+              <albedo_map>file:///home/han1284/projects/ros2_ws/install/pro450_sim/share/pro450_sim/models/atrium_corridor_10x10/materials/textures/wood_cherry.png</albedo_map>
+              <metalness>0.0</metalness>
+              <roughness>0.85</roughness>
+            </metal>
+          </pbr>
+        </material>
+      </visual>
+    </link>
+    <link name="door_w_handle">
+      <pose>-4.96 0.40599999999999997 1.0 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="door_w_handle_col">
+        <geometry><box><size>0.06 0.02 0.12</size></box></geometry>
+      </collision>
+      <visual name="door_w_handle_vis">
+        <geometry><box><size>0.06 0.02 0.12</size></box></geometry>
+        <material>
+          <ambient>0.75 0.72 0.68 1</ambient>
+          <diffuse>0.75 0.72 0.68 1</diffuse>
+          <specular>0.4 0.4 0.4 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="atrium_wall_n">
+      <pose>0 3.0 1.5 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="atrium_wall_n_col">
+        <geometry><box><size>6.12 0.12 3.0</size></box></geometry>
+      </collision>
+      <visual name="atrium_wall_n_vis">
+        <geometry><box><size>6.12 0.12 3.0</size></box></geometry>
+        <material>
+          <ambient>0.88 0.88 0.86 1</ambient>
+          <diffuse>0.88 0.88 0.86 1</diffuse>
+          <specular>0.05 0.05 0.05 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="atrium_wall_s">
+      <pose>0 -3.0 1.5 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="atrium_wall_s_col">
+        <geometry><box><size>6.12 0.12 3.0</size></box></geometry>
+      </collision>
+      <visual name="atrium_wall_s_vis">
+        <geometry><box><size>6.12 0.12 3.0</size></box></geometry>
+        <material>
+          <ambient>0.88 0.88 0.86 1</ambient>
+          <diffuse>0.88 0.88 0.86 1</diffuse>
+          <specular>0.05 0.05 0.05 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="atrium_wall_e">
+      <pose>3.0 0 1.5 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="atrium_wall_e_col">
+        <geometry><box><size>0.12 5.88 3.0</size></box></geometry>
+      </collision>
+      <visual name="atrium_wall_e_vis">
+        <geometry><box><size>0.12 5.88 3.0</size></box></geometry>
+        <material>
+          <ambient>0.88 0.88 0.86 1</ambient>
+          <diffuse>0.88 0.88 0.86 1</diffuse>
+          <specular>0.05 0.05 0.05 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="atrium_wall_w">
+      <pose>-3.0 0 1.5 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="atrium_wall_w_col">
+        <geometry><box><size>0.12 5.88 3.0</size></box></geometry>
+      </collision>
+      <visual name="atrium_wall_w_vis">
+        <geometry><box><size>0.12 5.88 3.0</size></box></geometry>
+        <material>
+          <ambient>0.88 0.88 0.86 1</ambient>
+          <diffuse>0.88 0.88 0.86 1</diffuse>
+          <specular>0.05 0.05 0.05 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="post_0">
+      <pose>3.0 3.0 1.5 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="post_0_col">
+        <geometry><box><size>0.18 0.18 3.0</size></box></geometry>
+      </collision>
+      <visual name="post_0_vis">
+        <geometry><box><size>0.18 0.18 3.0</size></box></geometry>
+        <material>
+          <ambient>0.40 0.42 0.45 1</ambient>
+          <diffuse>0.40 0.42 0.45 1</diffuse>
+          <specular>0.08 0.08 0.08 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="post_1">
+      <pose>3.0 -3.0 1.5 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="post_1_col">
+        <geometry><box><size>0.18 0.18 3.0</size></box></geometry>
+      </collision>
+      <visual name="post_1_vis">
+        <geometry><box><size>0.18 0.18 3.0</size></box></geometry>
+        <material>
+          <ambient>0.40 0.42 0.45 1</ambient>
+          <diffuse>0.40 0.42 0.45 1</diffuse>
+          <specular>0.08 0.08 0.08 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="post_2">
+      <pose>-3.0 3.0 1.5 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="post_2_col">
+        <geometry><box><size>0.18 0.18 3.0</size></box></geometry>
+      </collision>
+      <visual name="post_2_vis">
+        <geometry><box><size>0.18 0.18 3.0</size></box></geometry>
+        <material>
+          <ambient>0.40 0.42 0.45 1</ambient>
+          <diffuse>0.40 0.42 0.45 1</diffuse>
+          <specular>0.08 0.08 0.08 1</specular>
+        </material>
+      </visual>
+    </link>
+    <link name="post_3">
+      <pose>-3.0 -3.0 1.5 0 0 0</pose>
+      <inertial><mass>1</mass><inertia><ixx>1</ixx><iyy>1</iyy><izz>1</izz></inertia></inertial>
+      <collision name="post_3_col">
+        <geometry><box><size>0.18 0.18 3.0</size></box></geometry>
+      </collision>
+      <visual name="post_3_vis">
+        <geometry><box><size>0.18 0.18 3.0</size></box></geometry>
+        <material>
+          <ambient>0.40 0.42 0.45 1</ambient>
+          <diffuse>0.40 0.42 0.45 1</diffuse>
+          <specular>0.08 0.08 0.08 1</specular>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>

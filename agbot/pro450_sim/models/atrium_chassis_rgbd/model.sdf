@@ -1,0 +1,76 @@
+<?xml version="1.0"?>
+<!-- Physics-backed mobile RGB-D carrier for atrium SLAM and Nav2.
+     Gazebo moves this model natively from cmd_vel and publishes its odometry.
+     The collision box is the myAGV ground footprint.  Do not set this link
+     kinematic or drive it through set_pose: either choice bypasses wall contact
+     and can desynchronise depth from TF. -->
+<sdf version="1.8">
+  <model name="atrium_chassis_rgbd">
+    <static>false</static>
+    <self_collide>false</self_collide>
+    <link name="base_link">
+      <!-- Simplified physics proxy for the myAGV chassis and its arm payload.
+           The full Pro450 model is published in RViz from robot_description. -->
+      <pose>0 0 0.10 0 0 0</pose>
+      <gravity>true</gravity>
+      <inertial>
+        <mass>24.0</mass>
+        <inertia>
+          <ixx>0.52</ixx><iyy>0.52</iyy><izz>0.72</izz>
+          <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+        </inertia>
+      </inertial>
+      <collision name="chassis_collision">
+        <geometry><box><size>0.44 0.42 0.18</size></box></geometry>
+        <surface>
+          <friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction>
+        </surface>
+      </collision>
+      <visual name="chassis_proxy_vis">
+        <geometry><box><size>0.44 0.42 0.18</size></box></geometry>
+        <material>
+          <ambient>0.70 0.72 0.76 1</ambient>
+          <diffuse>0.82 0.84 0.88 1</diffuse>
+        </material>
+      </visual>
+      <!-- Fortress rgbd looks along +X. Stamp as optical frame used by RTAB-Map /
+           depthimage_to_laserscan (URDF maps optical Z → robot forward). -->
+      <sensor name="chassis_rgbd_camera" type="rgbd_camera">
+        <!-- base_link is at z=0.10; desired camera pose is
+             base_footprint + (0.23191, 0, 0.16928). -->
+        <pose>0.23191 0 0.06928 0 0 0</pose>
+        <gz_frame_id>camera_link</gz_frame_id>
+        <always_on>true</always_on>
+        <update_rate>15</update_rate>
+        <visualize>true</visualize>
+        <topic>/camera_gz</topic>
+        <camera>
+          <horizontal_fov>1.396263</horizontal_fov>
+          <image>
+            <width>640</width>
+            <height>480</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>0.15</near>
+            <far>8.0</far>
+          </clip>
+        </camera>
+      </sensor>
+    </link>
+    <plugin
+      filename="ignition-gazebo-velocity-control-system"
+      name="gz::sim::systems::VelocityControl">
+    </plugin>
+    <plugin
+      filename="ignition-gazebo-odometry-publisher-system"
+      name="gz::sim::systems::OdometryPublisher">
+      <odom_frame>odom</odom_frame>
+      <robot_base_frame>base_footprint</robot_base_frame>
+      <dimensions>2</dimensions>
+      <odom_publish_frequency>50</odom_publish_frequency>
+      <odom_topic>/model/atrium_chassis_rgbd/odometry</odom_topic>
+      <tf_topic>/model/atrium_chassis_rgbd/tf</tf_topic>
+    </plugin>
+  </model>
+</sdf>
