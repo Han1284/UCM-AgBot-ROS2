@@ -23,6 +23,8 @@ Panels:
     Splitter Ratio: 0.5
   - Class: nav2_rviz_plugins/Navigation 2
     Name: Navigation 2
+  - Class: moveit_task_constructor/Motion Planning Tasks
+    Name: Motion Planning Tasks
 Visualization Manager:
   Class: ""
   Displays:
@@ -473,7 +475,7 @@ Visualization Manager:
             Durability Policy: Volatile
             History Policy: Keep Last
             Reliability Policy: Reliable
-            Value: /intel_realsense_r200_depth/image_raw
+            Value: /camera/color/image_raw
           Value: true
         - Alpha: 1
           Autocompute Intensity Bounds: true
@@ -505,12 +507,54 @@ Visualization Manager:
             Filter size: 10
             History Policy: Keep Last
             Reliability Policy: Reliable
-            Value: /intel_realsense_r200_depth/points
+            Value: /camera/depth/color/points
           Use Fixed Frame: true
           Use rainbow: true
           Value: true
-      Enabled: false
-      Name: Realsense
+      Enabled: true
+      Name: Wrist D435
+    - Class: rviz_default_plugins/PointCloud2
+      Color Transformer: RGB8
+      Enabled: true
+      Name: Wrist D435 Point Cloud
+      Queue Size: 10
+      Size (Pixels): 3
+      Style: Points
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /camera/depth/color/points
+      Value: true
+    - Class: rviz_default_plugins/PointCloud2
+      Color: 255; 180; 40
+      Color Transformer: FlatColor
+      Enabled: true
+      Name: Fused Canopy
+      Queue Size: 2
+      Size (Pixels): 4
+      Style: Points
+      Topic:
+        Depth: 1
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /leaf_perception/fused_canopy
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Ranked Landing Points
+      Namespaces:
+        projected_grasp_labels: true
+        ranked_grasp_points: true
+      Topic:
+        Depth: 10
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /leaf_perception/projected_grasp_candidates
+      Value: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
       Name: Atrium Plants
@@ -522,6 +566,30 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /atrium_plant_markers
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Plant Numbers
+      Namespaces:
+        plant_numbers: true
+      Topic:
+        Depth: 1
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /atrium_plant_labels
+      Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Plant Collision Proxies
+      Namespaces:
+        {}
+      Topic:
+        Depth: 1
+        Durability Policy: Transient Local
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /plant_collision_markers
       Value: true
     - Class: rviz_default_plugins/MarkerArray
       Enabled: false
@@ -547,6 +615,27 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /atrium_patrol_markers
       Value: true
+    - Class: moveit_task_constructor/Motion Planning Tasks
+      Enabled: true
+      Interrupt Display: false
+      Loop Animation: false
+      Markers:
+        All at once?: false
+        Value: true
+      Name: Motion Planning Tasks
+      Robot:
+        Robot Alpha: 0.5
+        Show Robot Collision: false
+        Show Robot Visual: true
+        Use Fixed Robot Color: false
+      Robot Description: robot_description
+      Scene:
+        Scene Alpha: 0.9
+        Value: true
+      Show Trail: false
+      State Display Time: 0.05 s
+      Task Solution Topic: /solution
+      Trail Step Size: 1
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -584,21 +673,23 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -1.5708
-      Class: rviz_default_plugins/TopDownOrtho
+      Class: rviz_default_plugins/Orbit
+      Distance: 3.2
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
-      Invert Z Axis: false
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0.5
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 160
+      Pitch: 0.45
       Target Frame: <Fixed Frame>
-      Value: TopDownOrtho (rviz_default_plugins)
-      X: 0
-      Y: 0
+      Value: Orbit (rviz_default_plugins)
+      Yaw: 0.8
     Saved: ~
 Window Geometry:
   Displays:

@@ -24,14 +24,16 @@ def main():
     lock_handle.flush()
 
     environment = os.environ.copy()
-    environment.update({
+    defaults = {
         'LEAF_PIPELINE_ROBOT_PROFILE': 'pro450_f100',
         'LEAF_MTC_ROBOT_PROFILE': 'pro450_f100',
         'LEAF_PLANT_WORLD_PACKAGE': 'pro450_sim',
         'LEAF_PLANT_WORLD_RELATIVE_PATH': 'worlds/pro450_leaf_bench.world',
         'LEAF_PLANT_FRAME': 'base_root',
         'LEAF_PLANT_PROXY_SCALE': '0.5',
-    })
+    }
+    for name, value in defaults.items():
+        environment.setdefault(name, value)
     try:
         return subprocess.call(
             ['ros2', 'run', 'leaf_manipulation_sim',

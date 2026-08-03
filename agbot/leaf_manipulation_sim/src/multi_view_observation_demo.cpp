@@ -249,6 +249,15 @@ public:
       int pose_index = 0;
       auto ordered_poses =
         orderByMotionFromCurrentCamera(move_group, views->second);
+      // The compact Pro450 can see a valid canopy from its safe pose while
+      // every global shell NBV is outside its camera-link IK workspace.  Try
+      // real-baseline local parallax poses around the last measured reachable
+      // camera pose before the global candidates.  Perception still decides
+      // whether the changed view is geometrically diverse enough to count.
+      auto local_poses = localParallaxViewsFromCurrentCamera(move_group);
+      local_poses.insert(
+        local_poses.end(), ordered_poses.begin(), ordered_poses.end());
+      ordered_poses = std::move(local_poses);
       for (const auto& pose : ordered_poses) {
         ++pose_index;
         if (moveToCameraPose(
@@ -273,6 +282,17 @@ public:
             "observation; trying the next candidate",
             observation_index + 2, pose_index);
         }
+      }
+      if (!capture && moveToJointSpaceParallax(
+          move_group,
+          "joint-space completion NBV " +
+          std::to_string(observation_index + 2)))
+      {
+        moved = true;
+        rclcpp::sleep_for(
+          std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::duration<double>(settle_seconds_)));
+        capture = captureView();
       }
       if (!moved) {
         RCLCPP_WARN(
@@ -389,6 +409,87 @@ private:
     return false;
   }
 
+  bool moveToJointSpaceParallax(
+    moveit::planning_interface::MoveGroupInterface& move_group,
+    const std::string& label)
+  {
+    auto current = move_group.getCurrentState(2.0);
+    const auto* joint_group = robot_model_->getJointModelGroup(arm_group_);
+    if (!current || !joint_group ||
+      !robot_model_->hasLinkModel(base_frame_) ||
+      !robot_model_->hasLinkModel(camera_link_))
+    {
+      RCLCPP_WARN(
+        node_->get_logger(),
+        "Cannot construct the joint-space parallax fallback");
+      return false;
+    }
+
+    const Eigen::Isometry3d global_to_base =
+      current->getGlobalLinkTransform(base_frame_).inverse();
+    const Eigen::Vector3d current_camera =
+      (global_to_base * current->getGlobalLinkTransform(camera_link_))
+      .translation();
+
+    // These are small, collision-checked changes from an already executed
+    // observation pose.  FK screens out changes that do not provide the
+    // perception pipeline's required 4 cm physical camera baseline.
+    const std::array<std::array<double, 6>, 10> perturbations = {{
+      {{0.24, 0.00, 0.00, 0.00, 0.00, 0.00}},
+      {{-0.24, 0.00, 0.00, 0.00, 0.00, 0.00}},
+      {{0.00, 0.22, 0.00, 0.00, 0.00, 0.00}},
+      {{0.00, -0.22, 0.00, 0.00, 0.00, 0.00}},
+      {{0.18, 0.14, 0.00, 0.00, 0.00, 0.00}},
+      {{-0.18, 0.14, 0.00, 0.00, 0.00, 0.00}},
+      {{0.18, -0.14, 0.00, 0.00, 0.00, 0.00}},
+      {{-0.18, -0.14, 0.00, 0.00, 0.00, 0.00}},
+      {{0.16, 0.00, 0.18, 0.00, 0.00, 0.00}},
+      {{-0.16, 0.00, -0.18, 0.00, 0.00, 0.00}},
+    }};
+
+    int candidate_index = 0;
+    for (const auto& delta : perturbations) {
+      ++candidate_index;
+      moveit::core::RobotState candidate(*current);
+      for (std::size_t index = 0; index < arm_joint_names_.size(); ++index) {
+        const auto& joint_name = arm_joint_names_[index];
+        candidate.setVariablePosition(
+          joint_name,
+          initial_joints_[index] + delta[index]);
+      }
+      candidate.enforceBounds(joint_group);
+      candidate.update();
+      const Eigen::Vector3d candidate_camera =
+        (global_to_base * candidate.getGlobalLinkTransform(camera_link_))
+        .translation();
+      const double baseline = (candidate_camera - current_camera).norm();
+      if (baseline < 0.042 || baseline > 0.12) {
+        continue;
+      }
+
+      std::map<std::string, double> target;
+      for (const auto& joint_name : arm_joint_names_) {
+        target[joint_name] = candidate.getVariablePosition(joint_name);
+      }
+      move_group.setStartStateToCurrentState();
+      move_group.setJointValueTarget(target);
+      RCLCPP_INFO(
+        node_->get_logger(),
+        "Trying %s candidate %d with FK camera baseline %.3f m",
+        label.c_str(), candidate_index, baseline);
+      if (planAndReplay(
+          move_group,
+          label + "." + std::to_string(candidate_index)))
+      {
+        return true;
+      }
+    }
+    RCLCPP_WARN(
+      node_->get_logger(),
+      "No collision-free joint-space parallax candidate was executable");
+    return false;
+  }
+
   std::optional<Eigen::Isometry3d> currentCameraPose(
     moveit::planning_interface::MoveGroupInterface& move_group)
   {
@@ -418,14 +519,14 @@ private:
     // Pro450 to jump to a distant global shell. The perception node still
     // decides whether the captured view contributes enough surface evidence.
     const std::array<Eigen::Vector3d, 8> optical_offsets = {
-      Eigen::Vector3d(0.010, 0.000, 0.000),
-      Eigen::Vector3d(-0.010, 0.000, 0.000),
-      Eigen::Vector3d(0.020, 0.000, 0.000),
-      Eigen::Vector3d(-0.020, 0.000, 0.000),
-      Eigen::Vector3d(0.000, 0.010, 0.000),
-      Eigen::Vector3d(0.000, -0.010, 0.000),
-      Eigen::Vector3d(0.010, 0.000, -0.010),
-      Eigen::Vector3d(-0.010, 0.000, -0.010),
+      Eigen::Vector3d(0.050, 0.000, 0.000),
+      Eigen::Vector3d(-0.050, 0.000, 0.000),
+      Eigen::Vector3d(0.060, 0.000, 0.000),
+      Eigen::Vector3d(-0.060, 0.000, 0.000),
+      Eigen::Vector3d(0.050, 0.000, -0.010),
+      Eigen::Vector3d(-0.050, 0.000, -0.010),
+      Eigen::Vector3d(0.060, 0.000, -0.015),
+      Eigen::Vector3d(-0.060, 0.000, -0.015),
     };
     std::vector<geometry_msgs::msg::Pose> result;
     result.reserve(optical_offsets.size());
@@ -699,8 +800,9 @@ private:
 
   static bool isTransientCaptureRejection(const std::string& message)
   {
-    constexpr std::array<const char*, 4> transient_fragments = {
+    constexpr std::array<const char*, 5> transient_fragments = {
       "No organized RGB point cloud",
+      "No valid leaf instances in this view",
       "Lookup would require extrapolation into the past",
       "Lookup would require extrapolation into the future",
       "Could not transform",

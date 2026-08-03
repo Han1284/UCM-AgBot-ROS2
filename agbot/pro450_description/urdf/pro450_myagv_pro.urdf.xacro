@@ -13,6 +13,10 @@
   <xacro:arg name="include_chassis_orbbec" default="false"/>
   <xacro:arg name="include_chassis_gz_camera" default="false"/>
   <xacro:arg name="include_wrist_camera" default="true"/>
+  <!-- MoveIt uses a stopped-base view of this model: wheel rotations are
+       irrelevant to arm planning and otherwise require unavailable wheel
+       joint states.  Gazebo/Nav2 keep the default continuous joints. -->
+  <xacro:arg name="planning_fixed_base" default="false"/>
 
   <!-- Deck mount for Pro450. Z matches the official top-deck height near laser_link. -->
   <xacro:arg name="arm_mount_x" default="0.0"/>
@@ -71,12 +75,21 @@
         </geometry>
       </collision>
     </link>
-    <joint name="${name}_joint" type="continuous">
-      <parent link="base_link"/>
-      <child link="${name}_link"/>
-      <origin xyz="${x} ${y} ${z}" rpy="0 0 0"/>
-      <axis xyz="0 1 0"/>
-    </joint>
+    <xacro:if value="$(arg planning_fixed_base)">
+      <joint name="${name}_joint" type="fixed">
+        <parent link="base_link"/>
+        <child link="${name}_link"/>
+        <origin xyz="${x} ${y} ${z}" rpy="0 0 0"/>
+      </joint>
+    </xacro:if>
+    <xacro:unless value="$(arg planning_fixed_base)">
+      <joint name="${name}_joint" type="continuous">
+        <parent link="base_link"/>
+        <child link="${name}_link"/>
+        <origin xyz="${x} ${y} ${z}" rpy="0 0 0"/>
+        <axis xyz="0 1 0"/>
+      </joint>
+    </xacro:unless>
   </xacro:macro>
 
   <xacro:agv_wheel name="right_rear_wheel" mesh="wheel_rb_link.stl"
@@ -128,40 +141,43 @@
   <!-- Vendor chassis Orbbec mount (same as agv_pro.urdf camera_joint).
        Optical frames + optional Gazebo RGB-D for sim SLAM. -->
   <xacro:if value="$(arg include_chassis_orbbec)">
-    <link name="camera_link"/>
-    <joint name="camera_joint" type="fixed">
+    <link name="nav_camera_link"/>
+    <joint name="nav_camera_joint" type="fixed">
       <parent link="base_link"/>
-      <child link="camera_link"/>
+      <child link="nav_camera_link"/>
       <origin xyz="0.23191 0 0.14928" rpy="0 0 0"/>
     </joint>
     <!-- ROS optical convention: Z forward, X right, Y down -->
-    <link name="camera_depth_frame"/>
-    <joint name="camera_depth_joint" type="fixed">
-      <parent link="camera_link"/>
-      <child link="camera_depth_frame"/>
+    <link name="nav_camera_depth_frame"/>
+    <joint name="nav_camera_depth_joint" type="fixed">
+      <parent link="nav_camera_link"/>
+      <child link="nav_camera_depth_frame"/>
       <origin xyz="0 0 0" rpy="0 0 0"/>
     </joint>
-    <link name="camera_depth_optical_frame"/>
-    <joint name="camera_depth_optical_joint" type="fixed">
-      <parent link="camera_depth_frame"/>
-      <child link="camera_depth_optical_frame"/>
+    <link name="nav_camera_depth_optical_frame"/>
+    <joint name="nav_camera_depth_optical_joint" type="fixed">
+      <parent link="nav_camera_depth_frame"/>
+      <child link="nav_camera_depth_optical_frame"/>
       <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
     </joint>
-    <link name="camera_color_frame"/>
-    <joint name="camera_color_joint" type="fixed">
-      <parent link="camera_link"/>
-      <child link="camera_color_frame"/>
+    <link name="nav_camera_color_frame"/>
+    <joint name="nav_camera_color_joint" type="fixed">
+      <parent link="nav_camera_link"/>
+      <child link="nav_camera_color_frame"/>
       <origin xyz="0 0 0" rpy="0 0 0"/>
     </joint>
-    <link name="camera_color_optical_frame"/>
-    <joint name="camera_color_optical_joint" type="fixed">
-      <parent link="camera_color_frame"/>
-      <child link="camera_color_optical_frame"/>
+    <link name="nav_camera_color_optical_frame"/>
+    <joint name="nav_camera_color_optical_joint" type="fixed">
+      <parent link="nav_camera_color_frame"/>
+      <child link="nav_camera_color_optical_frame"/>
       <origin xyz="0 0 0" rpy="${-pi/2} 0 ${-pi/2}"/>
     </joint>
     <xacro:if value="$(arg include_chassis_gz_camera)">
       <xacro:include filename="$(find pro450_description)/urdf/pro450_gz_plugins.xacro"/>
-      <xacro:pro450_chassis_gz_rgbd_camera parent_link="camera_depth_frame" far="8.0"/>
+      <xacro:pro450_chassis_gz_rgbd_camera
+        parent_link="nav_camera_depth_frame" far="8.0"
+        topic="/nav_camera_gz"
+        frame_id="nav_camera_depth_optical_frame"/>
     </xacro:if>
   </xacro:if>
 
@@ -180,4 +196,22 @@
     <child link="base"/>
     <origin xyz="0 0 0" rpy="0 0 0"/>
   </joint>
+
+  <!-- Fortress drives the complete chassis+arm model as one rigid mobile
+       carrier while gz_ros2_control owns only the arm and gripper joints. -->
+  <xacro:if value="$(arg use_gz_control)">
+    <gazebo>
+      <plugin filename="ignition-gazebo-velocity-control-system"
+              name="gz::sim::systems::VelocityControl"/>
+      <plugin filename="ignition-gazebo-odometry-publisher-system"
+              name="gz::sim::systems::OdometryPublisher">
+        <odom_frame>odom</odom_frame>
+        <robot_base_frame>base_footprint</robot_base_frame>
+        <dimensions>2</dimensions>
+        <odom_publish_frequency>50</odom_publish_frequency>
+        <odom_topic>/model/pro450_myagv/odometry</odom_topic>
+        <tf_topic>/model/pro450_myagv/tf</tf_topic>
+      </plugin>
+    </gazebo>
+  </xacro:if>
 </robot>

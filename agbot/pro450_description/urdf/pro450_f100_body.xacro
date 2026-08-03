@@ -453,10 +453,18 @@
          screw.  The RealSense model places camera_depth_frame about
          (10.6, 17.5, 12.5) mm away from camera_bottom_screw_frame. -->
     <gazebo reference="camera_joint"><preserveFixedJoint>true</preserveFixedJoint></gazebo>
-    <xacro:pro450_d435_gz_rgbd_camera parent_link="camera_depth_frame"/>
+    <xacro:pro450_d435_gz_rgbd_camera
+      parent_link="camera_depth_frame"
+      topic="/wrist_camera_gz"
+      frame_id="camera_depth_optical_frame"/>
   </xacro:if>
   <xacro:if value="$(arg use_gz_control)">
-    <xacro:pro450_gz_ros2_control/>
+    <xacro:if value="$(arg use_floor_mount)">
+      <xacro:pro450_gz_ros2_control root_link="base_root" root_kinematic="true"/>
+    </xacro:if>
+    <xacro:unless value="$(arg use_floor_mount)">
+      <xacro:pro450_gz_ros2_control root_link="base_footprint" root_kinematic="false"/>
+    </xacro:unless>
   </xacro:if>
   <xacro:if value="$(arg use_fake_hardware)">
     <xacro:pro450_myagv_fake_ros2_control/>

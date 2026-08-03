@@ -15,6 +15,10 @@
   <exec_depend>joint_state_broadcaster</exec_depend>
   <exec_depend>hardware_interface</exec_depend>
   <exec_depend>control_msgs</exec_depend>
+  <exec_depend>action_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>trajectory_msgs</exec_depend>
+  <exec_depend>python3-yaml</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
   <exec_depend>nav2_msgs</exec_depend>
   <exec_depend>nav2_bringup</exec_depend>
@@ -43,6 +47,7 @@
   <exec_depend>shape_msgs</exec_depend>
   <exec_depend>std_msgs</exec_depend>
   <exec_depend>visualization_msgs</exec_depend>
+  <exec_depend>moveit_task_constructor_msgs</exec_depend>
   <exec_depend>xacro</exec_depend>
   <export><build_type>ament_cmake</build_type></export>
 </package>

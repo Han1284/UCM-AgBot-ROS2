@@ -1,0 +1,72 @@
+<?xml version="1.0"?>
+<robot name="pro450_myagv_pro">
+  <!-- Nav2 owns map/odom motion.  This semantic model deliberately has no
+       planar virtual joint: once docked, MoveIt plans in base_footprint and
+       treats the chassis as a fixed collision-aware arm pedestal. -->
+  <group name="pro450_arm">
+    <chain base_link="base" tip_link="gripper_base"/>
+  </group>
+  <group name="f100_gripper">
+    <joint name="gripper_controller"/>
+  </group>
+  <group name="pro450_with_f100">
+    <group name="pro450_arm"/>
+    <group name="f100_gripper"/>
+  </group>
+  <end_effector name="f100" parent_link="gripper_base" group="f100_gripper" parent_group="pro450_arm"/>
+  <group_state name="home" group="pro450_arm">
+    <joint name="joint1" value="0"/><joint name="joint2" value="0"/>
+    <joint name="joint3" value="0"/><joint name="joint4" value="0"/>
+    <joint name="joint5" value="0"/><joint name="joint6" value="0"/>
+  </group_state>
+  <group_state name="open" group="f100_gripper"><joint name="gripper_controller" value="0.20"/></group_state>
+  <group_state name="fully_open" group="f100_gripper"><joint name="gripper_controller" value="0.68"/></group_state>
+  <group_state name="closed" group="f100_gripper"><joint name="gripper_controller" value="0"/></group_state>
+
+  <disable_collisions link1="base" link2="link1" reason="Adjacent"/>
+  <disable_collisions link1="link1" link2="link2" reason="Adjacent"/>
+  <disable_collisions link1="link2" link2="link3" reason="Adjacent"/>
+  <disable_collisions link1="link3" link2="link4" reason="Adjacent"/>
+  <disable_collisions link1="link4" link2="link5" reason="Adjacent"/>
+  <disable_collisions link1="link5" link2="link6" reason="Adjacent"/>
+  <disable_collisions link1="link6" link2="gripper_connection" reason="Adjacent"/>
+  <disable_collisions link1="gripper_connection" link2="gripper_base" reason="Adjacent"/>
+  <disable_collisions link1="gripper_base" link2="gripper_left3" reason="Adjacent"/>
+  <disable_collisions link1="gripper_base" link2="gripper_right3" reason="Adjacent"/>
+  <disable_collisions link1="gripper_base" link2="gripper_left2" reason="Adjacent"/>
+  <disable_collisions link1="gripper_base" link2="gripper_right2" reason="Adjacent"/>
+  <disable_collisions link1="gripper_left3" link2="gripper_left1" reason="Adjacent"/>
+  <disable_collisions link1="gripper_right3" link2="gripper_right1" reason="Adjacent"/>
+  <disable_collisions link1="gripper_left1" link2="gripper_left2" reason="Mechanism"/>
+  <disable_collisions link1="gripper_left1" link2="gripper_left3" reason="Mechanism"/>
+  <disable_collisions link1="gripper_left2" link2="gripper_left3" reason="Mechanism"/>
+  <disable_collisions link1="gripper_right1" link2="gripper_right2" reason="Mechanism"/>
+  <disable_collisions link1="gripper_right1" link2="gripper_right3" reason="Mechanism"/>
+  <disable_collisions link1="gripper_right2" link2="gripper_right3" reason="Mechanism"/>
+  <disable_collisions link1="gripper_left1" link2="gripper_right1" reason="Mechanism"/>
+  <disable_collisions link1="gripper_left1" link2="gripper_right2" reason="Mechanism"/>
+  <disable_collisions link1="gripper_left1" link2="gripper_right3" reason="Mechanism"/>
+  <disable_collisions link1="gripper_left2" link2="gripper_right1" reason="Mechanism"/>
+  <disable_collisions link1="gripper_left2" link2="gripper_right2" reason="Mechanism"/>
+  <disable_collisions link1="gripper_left2" link2="gripper_right3" reason="Mechanism"/>
+  <disable_collisions link1="gripper_left3" link2="gripper_right1" reason="Mechanism"/>
+  <disable_collisions link1="gripper_left3" link2="gripper_right2" reason="Mechanism"/>
+  <disable_collisions link1="gripper_left3" link2="gripper_right3" reason="Mechanism"/>
+  <disable_collisions link1="gripper_base" link2="camera_link" reason="RigidlyMounted"/>
+  <disable_collisions link1="gripper_base" link2="camera_bottom_screw_frame" reason="RigidlyMounted"/>
+
+  <!-- Mobile-base rigid assembly. The arm is mounted directly above these
+       links, so adjacent chassis pairs are excluded from self-collision. -->
+  <disable_collisions link1="base_footprint" link2="base_link" reason="Adjacent"/>
+  <disable_collisions link1="base_link" link2="left_front_wheel_link" reason="Adjacent"/>
+  <disable_collisions link1="base_link" link2="left_rear_wheel_link" reason="Adjacent"/>
+  <disable_collisions link1="base_link" link2="right_front_wheel_link" reason="Adjacent"/>
+  <disable_collisions link1="base_link" link2="right_rear_wheel_link" reason="Adjacent"/>
+  <disable_collisions link1="base_link" link2="arm_mount_link" reason="Adjacent"/>
+  <disable_collisions link1="arm_mount_link" link2="base" reason="Adjacent"/>
+  <disable_collisions link1="base_link" link2="base" reason="Never"/>
+  <disable_collisions link1="base_link" link2="link1" reason="Never"/>
+  <disable_collisions link1="base" link2="link2" reason="Never"/>
+  <disable_collisions link1="base" link2="link3" reason="Default"/>
+  <disable_collisions link1="link1" link2="link3" reason="Never"/>
+</robot>

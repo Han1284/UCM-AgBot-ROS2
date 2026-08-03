@@ -65,6 +65,23 @@ def _parse_pose(element):
 
 
 def _plant_model_pose(package_share):
+    pose_override = os.environ.get('LEAF_PLANT_POSE', '').strip()
+    if pose_override:
+        values = tuple(float(value) for value in pose_override.split())
+        if len(values) != 6:
+            raise RuntimeError(
+                'LEAF_PLANT_POSE must contain: x y z roll pitch yaw')
+        position = values[:3]
+        rotation = _quaternion_from_rpy(*values[3:])
+        scale_override = os.environ.get('LEAF_PLANT_PROXY_SCALE', '1.0')
+        scale_values = tuple(
+            float(value) for value in scale_override.split())
+        scale = (
+            scale_values if len(scale_values) == 3
+            else (scale_values[0],) * 3
+        )
+        return position, rotation, scale
+
     world_package = os.environ.get(
         'LEAF_PLANT_WORLD_PACKAGE', 'leaf_manipulation_sim')
     world_relative_path = os.environ.get(

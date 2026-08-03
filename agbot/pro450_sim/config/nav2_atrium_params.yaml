@@ -124,8 +124,10 @@ controller_server:
     # Progress checker parameters
     progress_checker:
       plugin: "nav2_controller::SimpleProgressChecker"
-      required_movement_radius: 0.5
-      movement_time_allowance: 10.0
+      # Keep centimetre-scale docking corrections from being mistaken for a
+      # stalled robot near the plant.
+      required_movement_radius: 0.02
+      movement_time_allowance: 30.0
     # Goal checker parameters
     #precise_goal_checker:
     #  plugin: "nav2_controller::SimpleGoalChecker"
@@ -135,6 +137,8 @@ controller_server:
     general_goal_checker:
       stateful: True
       plugin: "nav2_controller::SimpleGoalChecker"
+      # Leaf inspection needs a repeatable arm-to-canopy baseline.  The former
+      # 0.18 m tolerance left the base about 0.63 m from a nominal 0.50 m dock.
       xy_goal_tolerance: 0.18
       yaw_goal_tolerance: 0.25
     # DWB parameters

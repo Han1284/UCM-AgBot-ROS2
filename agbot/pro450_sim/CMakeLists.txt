@@ -30,6 +30,11 @@ install(PROGRAMS
   RENAME pro450_myagv_planar_base
 )
 install(PROGRAMS
+  scripts/pro450_myagv_wheel_joint_states.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME pro450_myagv_wheel_joint_states
+)
+install(PROGRAMS
   scripts/pro450_myagv_motion_demo.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME pro450_myagv_motion_demo
@@ -61,6 +66,18 @@ install(PROGRAMS scripts/pro450_optical_cloud_to_scan.py
 install(PROGRAMS scripts/pro450_myagv_atrium_patrol.py
   DESTINATION lib/${PROJECT_NAME}
   RENAME pro450_myagv_atrium_patrol
+)
+install(PROGRAMS scripts/pro450_myagv_leaf_inspection.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME pro450_myagv_leaf_inspection
+)
+install(PROGRAMS scripts/pro450_myagv_leaf_inspection.sh
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME pro450_myagv_leaf_inspection_bringup
+)
+install(PROGRAMS scripts/pro450_myagv_leaf_environment.sh
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME pro450_myagv_leaf_environment
 )
 # Keep shell wrapper under a distinct name so the Python patrol node owns the short name.
 install(PROGRAMS scripts/pro450_myagv_atrium_patrol.sh

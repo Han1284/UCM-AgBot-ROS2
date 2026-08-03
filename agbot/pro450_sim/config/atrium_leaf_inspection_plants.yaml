@@ -1,0 +1,25 @@
+# Numbering is shared by RViz labels and the interactive inspection launcher.
+# dock_standoff=0.50 m is 75 mm farther than the fixed 0.425 m leaf-bench
+# baseline, while preserving chassis-to-pot clearance.
+frame_id: map
+initial_pose: {x: -4.0, y: -4.0, yaw: 0.785}
+dock_standoff: 0.50
+
+plants:
+  - {id: 1, name: plant_n_e, x: 2.50, y: 4.65, yaw: 0.0,
+     dock_x: 2.50, dock_y: 4.15, dock_yaw: 1.57080}
+  - {id: 2, name: plant_n_w, x: -2.50, y: 4.65, yaw: 0.0,
+     dock_x: -2.50, dock_y: 4.15, dock_yaw: 1.57080}
+  - {id: 3, name: plant_s_e, x: 2.50, y: -4.65, yaw: 0.0,
+     dock_x: 2.50, dock_y: -4.15, dock_yaw: -1.57080}
+  - {id: 4, name: plant_s_w, x: -2.50, y: -4.65, yaw: 0.0,
+     dock_x: -2.50, dock_y: -4.15, dock_yaw: -1.57080}
+  - {id: 5, name: plant_e_n, x: 4.65, y: 2.50, yaw: 0.0,
+     dock_x: 4.15, dock_y: 2.50, dock_yaw: 0.0}
+  - {id: 6, name: plant_e_s, x: 4.65, y: -2.50, yaw: 0.0,
+     dock_x: 4.15, dock_y: -2.50, dock_yaw: 0.0}
+  - {id: 7, name: plant_w_n, x: -4.65, y: 2.50, yaw: 0.0,
+     dock_x: -4.15, dock_y: 2.50, dock_yaw: 3.14159}
+  - {id: 8, name: plant_w_s, x: -4.65, y: -2.50, yaw: 0.0,
+     dock_x: -4.15, dock_y: -2.50, dock_yaw: 3.14159}
+

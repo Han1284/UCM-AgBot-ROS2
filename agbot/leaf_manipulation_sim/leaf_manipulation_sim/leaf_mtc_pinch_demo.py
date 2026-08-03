@@ -86,6 +86,26 @@ F100_CORRIDOR_SAFETY_MARGIN = 0.010
 APPROACH_AXIS = (0.0, 1.0, 0.0) if IS_PRO450 else (0.0, 0.0, 1.0)
 
 
+def write_pipeline_result(success, stage, message, solution_count=0):
+    """Write an optional machine-readable result for mission orchestration."""
+    result_path = os.environ.get('LEAF_MTC_RESULT_FILE', '').strip()
+    if not result_path:
+        return
+    payload = {
+        'success': bool(success),
+        'stage': str(stage),
+        'message': str(message),
+        'solution_count': int(solution_count),
+        'executed': os.environ.get(
+            'LEAF_MTC_EXECUTE', 'false').lower() in ('1', 'true', 'yes'),
+    }
+    temporary_path = result_path + '.tmp'
+    with open(temporary_path, 'w', encoding='utf-8') as stream:
+        json.dump(payload, stream, ensure_ascii=False)
+        stream.write('\n')
+    os.replace(temporary_path, result_path)
+
+
 @dataclass
 class RankedCandidate:
     """One perception-ranked grasp point and one romu4o roll angle."""
@@ -833,19 +853,27 @@ def fast_check_child(input_path, output_path):
         'stage_counts': stage_counts,
         'first_zero_stage': first_zero,
     }
+    failure_comments = {}
+    for stage_name in stage_names:
+        try:
+            comments = [
+                str(getattr(failure, 'comment', failure))
+                for failure in list(task[stage_name].failures)[:3]
+            ]
+        except (
+            AttributeError, IndexError, KeyError, RuntimeError, TypeError
+        ):
+            continue
+        if comments:
+            failure_comments[stage_name] = comments
+    output['failure_comments'] = failure_comments
     if verbose:
-        for stage_name in stage_names:
-            try:
-                failures = list(task[stage_name].failures)
-            except (
-                AttributeError, IndexError, KeyError, RuntimeError, TypeError
-            ):
-                continue
-            for failure in failures[:3]:
+        for stage_name, comments in failure_comments.items():
+            for comment in comments:
                 print(
                     '[leaf_mtc_fast_check] '
                     f'{stage_name}: '
-                    f'{getattr(failure, "comment", str(failure))}',
+                    f'{comment}',
                     flush=True,
                 )
     if output['success']:
@@ -1236,6 +1264,7 @@ def select_feasible_candidates(candidates, ik_prechecker):
                 f'[{check_index}/{total_checks}] 正在解算 '
                 f'({percentage:.1f}%): '
                 f'leaf={candidate.leaf_id}, '
+                f'collision_leaf={candidate.collision_leaf_id or "auto"}, '
                 f'point={candidate.point_rank + 1}, '
                 f'tilt={candidate.tilt_degrees:+.0f} deg, '
                 f'roll={candidate.roll_degrees:+.0f} deg, '
@@ -1245,16 +1274,40 @@ def select_feasible_candidates(candidates, ik_prechecker):
                 f'perception={candidate.perception_score:.3f}',
                 flush=True,
             )
-            ik_valid, _ = ik_prechecker.check(candidate)
+            ik_valid, ik_reason = ik_prechecker.check(candidate)
             if not ik_valid:
+                print(
+                    '[leaf_mtc_pinch_demo] 候选淘汰（IK阶段）：'
+                    f'leaf={candidate.leaf_id}，'
+                    f'collision_leaf={candidate.collision_leaf_id or "auto"}，'
+                    f'point={candidate.point_rank + 1}，'
+                    f'tilt={candidate.tilt_degrees:+.0f}°，'
+                    f'roll={candidate.roll_degrees:+.0f}°，'
+                    f'开度尝试={aperture_index}/{len(aperture_positions)}，'
+                    f'原因={ik_reason}。',
+                    flush=True,
+                )
                 continue
             result, check_status = _run_fast_check_subprocess(
                 candidate, fast_timeout)
             if check_status == 'timeout':
                 timeout_count += 1
+                print(
+                    '[leaf_mtc_pinch_demo] 候选淘汰（快速MTC超时）：'
+                    f'leaf={candidate.leaf_id}，'
+                    f'point={candidate.point_rank + 1}，'
+                    f'限制={fast_timeout:.1f}s。',
+                    flush=True,
+                )
                 continue
             if check_status == 'child_error':
                 child_error_count += 1
+                print(
+                    '[leaf_mtc_pinch_demo] 候选淘汰（快速MTC子进程错误）：'
+                    f'leaf={candidate.leaf_id}，'
+                    f'point={candidate.point_rank + 1}。',
+                    flush=True,
+                )
                 continue
             if result and result.get('success'):
                 raw_cost = float(result.get('cost', 0.0))
@@ -1277,6 +1330,25 @@ def select_feasible_candidates(candidates, ik_prechecker):
                 first_zero = (result or {}).get('first_zero_stage', '')
                 if first_zero:
                     mtc_failure_stages[first_zero] += 1
+                    print(
+                        '[leaf_mtc_pinch_demo] 候选淘汰（快速MTC阶段）：'
+                        f'leaf={candidate.leaf_id}，'
+                        f'collision_leaf={candidate.collision_leaf_id}，'
+                        f'point={candidate.point_rank + 1}，'
+                        f'首个零解阶段={first_zero}。',
+                        flush=True,
+                    )
+                    comments = (result or {}).get(
+                        'failure_comments', {}).get(first_zero, [])
+                    if comments and mtc_failure_stages[first_zero] <= 3:
+                        print(
+                            '[leaf_mtc_pinch_demo] '
+                            f'{first_zero} failure for '
+                            f'perceived leaf {candidate.leaf_id} / '
+                            f'{candidate.collision_leaf_id}: '
+                            f'{comments[0]}',
+                            flush=True,
+                        )
                 else:
                     stage_counts = (result or {}).get('stage_counts', {})
                     for stage_name, solution_count in stage_counts.items():
@@ -1327,6 +1399,9 @@ def select_feasible_candidates(candidates, ik_prechecker):
 
 
 def main():
+    exit_after_result = os.environ.get(
+        'LEAF_MTC_EXIT_AFTER_RESULT', 'false').lower() in (
+            '1', 'true', 'yes')
     candidates = wait_for_ranked_candidates()
     if not candidates:
         print(
@@ -1335,7 +1410,8 @@ def main():
         )
         if rclpy.ok():
             rclpy.shutdown()
-        return
+        write_pipeline_result(False, 'perception', 'no ranked candidates')
+        return 2
 
     print(
         f'[leaf_mtc_pinch_demo] 收到 {len(candidates)} 个点-角度组合，'
@@ -1358,7 +1434,8 @@ def main():
             rclpy.shutdown()
         del node
         rclcpp.shutdown()
-        return
+        write_pipeline_result(False, 'ik_service', '/compute_ik unavailable')
+        return 3
     ik_only = os.environ.get(
         'LEAF_MTC_IK_ONLY', 'false').lower() in ('1', 'true', 'yes')
     execute_solution = os.environ.get(
@@ -1381,7 +1458,10 @@ def main():
                 'IK、碰撞和直线预抓取检查。',
                 flush=True,
             )
-            return
+            write_pipeline_result(
+                False, 'precheck',
+                'all candidates failed IK, collision, or approach checks')
+            return 4
         desired_complete_solutions = int(os.environ.get(
             'LEAF_MTC_DESIRED_COMPLETE_SOLUTIONS',
             '3' if IS_PRO450 and not ik_only else '1',
@@ -1457,7 +1537,8 @@ def main():
                 'Failure details remain in the terminal; RViz was cleared.',
                 flush=True,
             )
-            return
+            write_pipeline_result(False, 'planning', 'no complete solution')
+            return 5
         else:
             ranked_solutions.sort(key=lambda item: item[0])
             print(
@@ -1487,7 +1568,10 @@ def main():
                         'ik_only 模式不会执行。',
                         flush=True,
                     )
-                    return
+                    write_pipeline_result(
+                        False, 'execution', 'ik_only cannot execute',
+                        len(ranked_solutions))
+                    return 6
                 print(
                     '[leaf_mtc_pinch_demo] 开始在 Gazebo 执行最低代价完整解 '
                     '(预抓取、夹取、松开、回零)。',
@@ -1503,12 +1587,27 @@ def main():
                         f'MoveIt error code={execution_code!r}',
                         flush=True,
                     )
-                    return
+                    write_pipeline_result(
+                        False, 'execution',
+                        f'MoveIt error code={execution_code!r}',
+                        len(ranked_solutions))
+                    return 7
                 print(
                     '[leaf_mtc_pinch_demo] 完整解执行成功：夹爪已松开，'
                     '机械臂已回到垂直 home 位。',
                     flush=True,
                 )
+
+            write_pipeline_result(
+                True,
+                'execution' if execute_solution else 'planning',
+                ('complete solution executed and arm returned home'
+                 if execute_solution
+                 else 'complete solutions generated'),
+                len(ranked_solutions),
+            )
+            if exit_after_result:
+                return 0
 
 
         # Keep the introspection services alive while solutions are inspected.
@@ -1528,6 +1627,7 @@ def main():
             rclpy.shutdown()
         del node
         rclcpp.shutdown()
+    return 0
 
 
 if __name__ == '__main__':
@@ -1536,4 +1636,4 @@ if __name__ == '__main__':
         child_output = sys.argv[3]
         del sys.argv[1:4]
         sys.exit(fast_check_child(child_input, child_output))
-    main()
+    raise SystemExit(main())

@@ -132,6 +132,8 @@ class MultiViewLeafPlanner(Node):
         self.declare_parameter('candidate_count', 8)
         self.declare_parameter('per_leaf_candidate_count', 4)
         self.declare_parameter('minimum_candidate_separation', 0.04)
+        self.declare_parameter('retry_candidate_separation', 0.06)
+        self.declare_parameter('retry_minimum_candidates', 3)
         self.declare_parameter(
             'minimum_root_to_tip_approach_angle_degrees', 45.0)
         self.declare_parameter('gripper_internal_depth', 0.032)
@@ -148,6 +150,9 @@ class MultiViewLeafPlanner(Node):
         self.declare_parameter('surface_support_voxels', 2.5)
         self.declare_parameter('minimum_edge_margin_ratio', 0.15)
         self.declare_parameter('minimum_face_inset_ratio', 0.15)
+        self.declare_parameter('maximum_proxy_surface_gate', 0.0)
+        self.declare_parameter('proxy_surface_keep_fraction', 1.0)
+        self.declare_parameter('use_proxy_surface_normal', False)
         self.declare_parameter('approach_distance', 0.07)
         self.declare_parameter('minimum_clearance', 0.025)
         self.declare_parameter('view_lateral_offset', 0.10)
@@ -199,6 +204,10 @@ class MultiViewLeafPlanner(Node):
             self.get_parameter('per_leaf_candidate_count').value)
         self.minimum_candidate_separation = self.scene_scale * float(
             self.get_parameter('minimum_candidate_separation').value)
+        self.retry_candidate_separation = self.scene_scale * float(
+            self.get_parameter('retry_candidate_separation').value)
+        self.retry_minimum_candidates = int(
+            self.get_parameter('retry_minimum_candidates').value)
         self.minimum_root_to_tip_approach_angle_degrees = float(
             self.get_parameter(
                 'minimum_root_to_tip_approach_angle_degrees').value)
@@ -224,6 +233,12 @@ class MultiViewLeafPlanner(Node):
             self.get_parameter('minimum_edge_margin_ratio').value)
         self.minimum_face_inset_ratio = float(
             self.get_parameter('minimum_face_inset_ratio').value)
+        self.maximum_proxy_surface_gate = float(
+            self.get_parameter('maximum_proxy_surface_gate').value)
+        self.proxy_surface_keep_fraction = float(
+            self.get_parameter('proxy_surface_keep_fraction').value)
+        self.use_proxy_surface_normal = bool(
+            self.get_parameter('use_proxy_surface_normal').value)
         self.approach_distance = self.scene_scale * float(
             self.get_parameter('approach_distance').value)
         self.minimum_clearance = self.scene_scale * float(
@@ -304,6 +319,8 @@ class MultiViewLeafPlanner(Node):
         self.previous_surface_voxel_keys = set()
         self.low_surface_gain_streak = 0
         self.last_best_completion_gain = 0.0
+        self.retry_reference_candidate_points: List[np.ndarray] = []
+        self.retry_reselection_used = False
 
         durable = QoSProfile(
             depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
@@ -326,6 +343,11 @@ class MultiViewLeafPlanner(Node):
             Trigger, '/leaf_perception/reset_views', self._reset_views)
         self.finalize_service = self.create_service(
             Trigger, '/leaf_perception/finalize', self._finalize)
+        self.reselect_service = self.create_service(
+            Trigger,
+            '/leaf_perception/reselect_candidates',
+            self._reselect_candidates,
+        )
         self.bounds_publisher = self.create_publisher(
             Marker, '/leaf_perception/canopy_bounds', durable)
         self.views_publisher = self.create_publisher(
@@ -433,8 +455,10 @@ class MultiViewLeafPlanner(Node):
         self.previous_surface_voxel_keys = set()
         self.low_surface_gain_streak = 0
         self.last_best_completion_gain = 0.0
+        self.retry_reference_candidate_points = []
+        self.retry_reselection_used = False
         response.success = True
-        response.message = 'Cleared all multi-view observations'
+        response.message = '已清空全部多视角观测、旧落点和一次性换点状态'
         return response
 
     def _capture_view(self, _request, response):
@@ -569,6 +593,57 @@ class MultiViewLeafPlanner(Node):
         response.message = (
             f'Published {len(candidates)} candidates from '
             f'{self.view_count} valid views')
+        return response
+
+    def _reselect_candidates(self, _request, response):
+        """Publish one alternative shortlist from the retained fused canopy."""
+        if self.retry_reselection_used:
+            response.success = False
+            response.message = (
+                '一次性换点机会已经使用，拒绝再次选择，避免无限重试')
+            self.get_logger().warning(response.message)
+            return response
+        if not self.retry_reference_candidate_points:
+            response.success = False
+            response.message = '没有首次落点记录，无法进行差异化换点'
+            self.get_logger().warning(response.message)
+            return response
+        if self.latest_cloud is None:
+            response.success = False
+            response.message = '融合冠层仍在，但缺少用于发布时间戳的点云消息'
+            self.get_logger().warning(response.message)
+            return response
+
+        previous_points = [
+            np.array(point, dtype=float, copy=True)
+            for point in self.retry_reference_candidate_points
+        ]
+        candidates = self._rank_candidates(
+            excluded_points=previous_points,
+            exclusion_distance=self.retry_candidate_separation,
+        )
+        if len(candidates) < self.retry_minimum_candidates:
+            response.success = False
+            response.message = (
+                f'差异化换点只得到 {len(candidates)} 个新落点，少于最低 '
+                f'{self.retry_minimum_candidates} 个；不会启动第二次 MTC')
+            self.get_logger().warning(response.message)
+            return response
+
+        nearest_distances = [
+            min(float(np.linalg.norm(candidate.point - old_point))
+                for old_point in previous_points)
+            for candidate in candidates
+        ]
+        self._publish_candidates(candidates, self.latest_cloud)
+        self.retry_reselection_used = True
+        response.success = True
+        response.message = (
+            f'复用 {self.view_count} 个融合视角，发布 {len(candidates)} 个新落点；'
+            f'新旧落点最近距离范围 '
+            f'{min(nearest_distances):.3f}-{max(nearest_distances):.3f} m，'
+            '未重新拍摄')
+        self.get_logger().info(response.message)
         return response
 
     def _segment_cloud(
@@ -933,7 +1008,11 @@ class MultiViewLeafPlanner(Node):
             )
         ])
 
-    def _rank_candidates(self) -> List[GraspCandidate]:
+    def _rank_candidates(
+        self,
+        excluded_points: Optional[Sequence[np.ndarray]] = None,
+        exclusion_distance: float = 0.0,
+    ) -> List[GraspCandidate]:
         track_support = ','.join(
             f'{track.leaf_id}:{len(track.observations)}'
             for track in self.tracks
@@ -949,9 +1028,36 @@ class MultiViewLeafPlanner(Node):
             return []
         fused = {}
         consensus_counts = {}
+        proxy_gated_counts = {}
+        proxy_objects = [
+            collision_object
+            for collision_objects in leaf_collision_groups().values()
+            for collision_object in collision_objects
+        ]
         for track in eligible:
             consensus = self._consensus_surface_points(track)
             consensus_counts[track.leaf_id] = int(consensus.shape[0])
+            if self.maximum_proxy_surface_gate > 0.0 and consensus.size:
+                distances = np.asarray([
+                    min(
+                        primitive_surface_distance(point, collision_object)
+                        for collision_object in proxy_objects
+                    )
+                    for point in consensus
+                ], dtype=float)
+                accepted = np.flatnonzero(
+                    distances <= self.maximum_proxy_surface_gate)
+                if accepted.size and self.proxy_surface_keep_fraction < 1.0:
+                    keep_count = min(
+                        accepted.size,
+                        max(25, int(math.ceil(
+                            accepted.size
+                            * self.proxy_surface_keep_fraction))))
+                    accepted = accepted[
+                        np.argsort(distances[accepted])[:keep_count]]
+                consensus = consensus[accepted]
+                proxy_gated_counts[track.leaf_id] = int(
+                    consensus.shape[0])
             if consensus.shape[0] >= 25:
                 fused[track.leaf_id] = consensus
         eligible = [
@@ -960,6 +1066,7 @@ class MultiViewLeafPlanner(Node):
             self.get_logger().info(
                 'Candidate audit: track_views=['
                 f'{track_support}]; consensus={consensus_counts}; '
+                f'proxy_gated={proxy_gated_counts}; '
                 'no track retained 25 surface-consensus points')
             return []
         per_leaf_candidates: List[List[GraspCandidate]] = []
@@ -979,11 +1086,34 @@ class MultiViewLeafPlanner(Node):
             if leaf_candidates:
                 per_leaf_candidates.append(leaf_candidates)
 
+        proxy_groups = leaf_collision_groups()
+        proxy_objects = [
+            collision_object
+            for collision_objects in proxy_groups.values()
+            for collision_object in collision_objects
+        ]
         projection_inputs = []
         candidate_by_index = {}
         input_index = 0
         for leaf_candidates in per_leaf_candidates:
             for candidate in leaf_candidates:
+                if self.use_proxy_surface_normal and proxy_objects:
+                    nearest_proxy = min(
+                        proxy_objects,
+                        key=lambda collision_object:
+                        primitive_surface_distance(
+                            candidate.point, collision_object),
+                    )
+                    proxy_pose = nearest_proxy.primitive_poses[0]
+                    proxy_normal = Rotation.from_quat([
+                        proxy_pose.orientation.x,
+                        proxy_pose.orientation.y,
+                        proxy_pose.orientation.z,
+                        proxy_pose.orientation.w,
+                    ]).apply([0.0, 0.0, 1.0])
+                    if np.dot(proxy_normal, candidate.normal) < 0.0:
+                        proxy_normal = -proxy_normal
+                    candidate.normal = np.asarray(proxy_normal, dtype=float)
                 projection_inputs.append(ProjectionInput(
                     index=input_index,
                     perceived_leaf_id=candidate.leaf_id,
@@ -993,7 +1123,6 @@ class MultiViewLeafPlanner(Node):
                 ))
                 candidate_by_index[input_index] = candidate
                 input_index += 1
-        proxy_groups = leaf_collision_groups()
         proxy_gap_audit = {}
         for leaf_candidates in per_leaf_candidates:
             if not leaf_candidates:
@@ -1035,9 +1164,22 @@ class MultiViewLeafPlanner(Node):
                 candidate.leaf_id, []).append(candidate)
         per_leaf_candidates = []
         spatially_diverse_counts = {}
+        retry_excluded_counts = {}
         for leaf_id in sorted(projected_per_leaf):
             leaf_candidates = projected_per_leaf[leaf_id]
             leaf_candidates.sort(key=lambda item: item.score, reverse=True)
+            before_exclusion = len(leaf_candidates)
+            if excluded_points and exclusion_distance > 0.0:
+                leaf_candidates = [
+                    candidate for candidate in leaf_candidates
+                    if all(
+                        np.linalg.norm(candidate.point - old_point)
+                        >= exclusion_distance
+                        for old_point in excluded_points
+                    )
+                ]
+            retry_excluded_counts[leaf_id] = (
+                before_exclusion - len(leaf_candidates))
             spatially_diverse = self._spatially_diverse_candidates(
                 leaf_candidates, self.per_leaf_candidate_count)
             spatially_diverse_counts[leaf_id] = len(spatially_diverse)
@@ -1052,10 +1194,12 @@ class MultiViewLeafPlanner(Node):
             'Candidate audit: '
             f'track_views=[{track_support}]; '
             f'consensus={consensus_counts}; '
+            f'proxy_gated={proxy_gated_counts}; '
             f'raw={raw_candidate_counts}; '
             f'proxy_median_gaps={proxy_gap_audit}; '
             f'projection_assignments={assignments}; '
             f'projected={projected_counts}; '
+            f'retry_excluded={retry_excluded_counts}; '
             f'spatially_diverse={spatially_diverse_counts}; '
             f'minimum_separation='
             f'{self.minimum_candidate_separation:.4f} m')
@@ -2335,8 +2479,15 @@ class MultiViewLeafPlanner(Node):
             'distal_same_leaf_projection_then_romu4o_reachability')
         self.candidates_publisher.publish(message)
         self._publish_candidate_markers(candidates, cloud)
+        if not self.retry_reference_candidate_points:
+            self.retry_reference_candidate_points = [
+                np.array(candidate.point, dtype=float, copy=True)
+                for candidate in candidates
+            ]
         self.get_logger().info(
-            f'Published {len(candidates)} ranked multi-view grasp points')
+            f'已发布 {len(candidates)} 个多视角排序抓取落点；'
+            f'覆盖叶片={sorted({candidate.leaf_id for candidate in candidates})}，'
+            f'融合视角数={self.view_count}')
 
     def _publish_candidate_markers(
         self, candidates: Sequence[GraspCandidate], cloud: PointCloud2

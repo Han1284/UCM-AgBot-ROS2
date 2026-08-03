@@ -24,3 +24,12 @@ gripper_trajectory_controller:
     state_interfaces: [position, velocity]
     allow_partial_joints_goal: true
     allow_nonzero_velocity_at_trajectory_end: true
+
+joint_state_broadcaster:
+  ros__parameters:
+    # Base motion is owned by Gazebo's planar velocity plugin, not ros2_control.
+    # Publish neutral wheel states so MoveIt's complete-state monitor does not
+    # treat the stopped mobile platform as an incomplete robot state.
+    extra_joints:
+      [left_front_wheel_joint, left_rear_wheel_joint,
+       right_front_wheel_joint, right_rear_wheel_joint]
